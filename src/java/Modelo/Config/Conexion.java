@@ -1,23 +1,29 @@
-
-package modelo.config;
+package Modelo.Config;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class Conexion {
+    // Parámetros de conexión a tu base de datos 'turpial'
+    private static final String URL = "jdbc:mysql://localhost:3000/turpial?serverTimezone=UTC&useSSL=false";
+    private static final String USER = "root"; // O el usuario que definiste en tu script ('admin' o 'clie')
+    private static final String PASSWORD = "#Aprendiz2024"; 
+    private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
 
-    private static final String URL      = "jdbc:mysql://localhost:3306/turpial";
-    private static final String USUARIO  = "root";
-    private static final String PASSWORD = "#Aprendiz2024";
-
-    public static Connection obtener() throws SQLException {
+    public static Connection getConnection() {
+        Connection conexion = null;
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            return DriverManager.getConnection(URL, USUARIO, PASSWORD);
+            // Registrar el Driver de MySQL
+            Class.forName(DRIVER);
+            // Obtener la conexión
+            conexion = DriverManager.getConnection(URL, USER, PASSWORD);
+            System.out.println("Conexión exitosa a la base de datos 'turpial'.");
         } catch (ClassNotFoundException e) {
-            throw new SQLException("Driver MySQL no encontrado", e);
-            
+            System.err.println("Error: No se encontró el Driver de MySQL -> " + e.getMessage());
+        } catch (SQLException e) {
+            System.err.println("Error de SQL al conectar a la base de datos -> " + e.getMessage());
         }
+        return conexion;
     }
 }
