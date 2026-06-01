@@ -11,14 +11,22 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-@WebServlet(name = "PruebaServlet", urlPatterns = {"/PruebaServlet"})
+@WebServlet("/PruebaServlet")
 public class PruebaServlet extends HttpServlet {
 
     private final UsuarioDAO usuarioDao = new UsuarioDAO();
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+        throws ServletException, IOException {
+        
+        response.setHeader( "Access-Control-Allow-Origin", "*");
+
+        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        
+        System.out.println("Entró al servlet");
         
         // Configuramos la respuesta para que el navegador sepa que le devolvemos JSON
         response.setContentType("application/json");
@@ -28,9 +36,9 @@ public class PruebaServlet extends HttpServlet {
         // Capturamos el parámetro 'accion' enviado en la URL (?accion=registrar)
         String accion = request.getParameter("accion");
 
-        if ("registrar".equals(accion)) {
+        if ("create".equals(accion)) {
             try {
-                // 1. Leer el cuerpo de la petición (el JSON que envía el frontend)
+                // Leer el cuerpo de la petición (el JSON que envía el frontend)
                 StringBuilder sb = new StringBuilder();
                 String linea;
                 try (BufferedReader reader = request.getReader()) {
@@ -40,8 +48,7 @@ public class PruebaServlet extends HttpServlet {
                 }
                 String jsonInput = sb.toString();
 
-                // 2. Mapeo rápido de datos extraídos del JSON manual o usando expresiones
-                // (Para evitar errores si no tienes Gson/Jackson en NetBeans, extraemos los textos básicos)
+                // Mapeo de datos extraídos del JSON manual o usando expresiones
                 String name = extraerPropiedadJson(jsonInput, "name");
                 String email = extraerPropiedadJson(jsonInput, "email");
                 String phone = extraerPropiedadJson(jsonInput, "phone");
@@ -69,12 +76,66 @@ public class PruebaServlet extends HttpServlet {
             } catch (Exception e) {
                 out.print("{\"status\":\"error\", \"message\":\"Error interno en el servidor: " + e.getMessage() + "\"}");
             }
-        } else {
-            out.print("{\"status\":\"error\", \"message\":\"Acción no permitida o no encontrada.\"}");
-        }
-        out.flush();
-    }
+        }else if ("login".equals(accion)) {
 
+            try {
+
+                StringBuilder sb = new StringBuilder();
+                String linea;
+
+                try (BufferedReader reader = request.getReader()) {
+
+                    while ((linea = reader.readLine())!= null) {
+                        sb.append(linea);
+                    }
+                }
+
+                String jsonInput = sb.toString();
+                String email = extraerPropiedadJson(jsonInput, "email");
+                String password = extraerPropiedadJson( jsonInput, "password");
+                Usuario usuario = usuarioDao.login( email, password);
+
+                if (usuario != null) {
+                    out.print("{" + "\"status\":\"success\"," + "\"name\":\"" + usuario.getName()
+                        + "\"," + "\"email\":\""  + usuario.getEmail() + "\"" + "}");
+                }
+                else {
+                    out.print("{" + "\"status\":\"error\"," + "\"message\":\"Credenciales incorrectas\"" + "}");
+                }
+            }
+            catch (Exception e) {
+                out.print ( "{" + "\"status\":\"error\"," + "\"message\":\"" + e.getMessage() + "\"" + "}");
+            }
+        }
+    }
+    // manejamos las peticiones options necesarias para cors
+    @Override
+    protected void doOptions(
+        HttpServletRequest request,
+        HttpServletResponse response
+    )
+    throws ServletException, IOException {
+
+        response.setHeader(
+            "Access-Control-Allow-Origin",
+            "*"
+        );
+
+        response.setHeader(
+            "Access-Control-Allow-Methods",
+            "POST, GET, OPTIONS"
+        );
+
+        response.setHeader(
+            "Access-Control-Allow-Headers",
+            "Content-Type"
+        );
+
+        response.setStatus(
+            HttpServletResponse.SC_OK
+        );
+    }
+    
     // Método auxiliar rápido para extraer campos de un JSON plano sin librerías externas
     private String extraerPropiedadJson(String json, String propiedad) {
         try {
@@ -101,5 +162,46 @@ public class PruebaServlet extends HttpServlet {
             throws ServletException, IOException {
         // Redireccionar posts o peticiones GET no autorizadas
         response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Utiliza peticiones POST.");
+    }
+    @Override
+    protected void service(
+        HttpServletRequest request,
+        HttpServletResponse response
+    )
+    throws ServletException, IOException {
+
+        response.setHeader(
+            "Access-Control-Allow-Origin",
+            "*"
+        );
+
+        response.setHeader(
+            "Access-Control-Allow-Methods",
+            "GET, POST, PUT, DELETE, OPTIONS"
+        );
+
+        response.setHeader(
+            "Access-Control-Allow-Headers",
+            "*"
+        );
+
+        response.setHeader(
+            "Access-Control-Allow-Credentials",
+            "true"
+        );
+
+        // Responder inmediatamente OPTIONS
+        if (
+            request.getMethod().equalsIgnoreCase("OPTIONS")
+        ) {
+
+            response.setStatus(
+                HttpServletResponse.SC_OK
+            );
+
+            return;
+        }
+
+        super.service(request, response);
     }
 }

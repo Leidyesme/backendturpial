@@ -9,7 +9,7 @@ public class Usuario {
     private String password;
     private String estado;
 
-    // Constructor vacío (Esencial para frameworks y buenas prácticas)
+    // Constructor vacío 
     public Usuario() {
     }
 

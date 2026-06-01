@@ -4,13 +4,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+// clase encargada de la coneccion con la base de datos
 public class Conexion {
-    // Parámetros de conexión a tu base de datos 'turpial'
+    // Parámetros de conexión de la base de datos 'turpial'
     private static final String URL = "jdbc:mysql://localhost:3306/turpial?serverTimezone=UTC&useSSL=false";
     private static final String USER = "root"; // O el usuario que definiste en tu script ('admin' o 'clie')
     private static final String PASSWORD = "#Aprendiz2024"; 
     private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
-
+    
+    // metodo que se encarga de la crear y devolver la conexion
     public static Connection getConnection() {
         Connection conexion = null;
         try {
