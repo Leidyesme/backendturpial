@@ -4,9 +4,9 @@ public class Usuario {
     private int idUsuario;
     private int idRol;
     private String name;
-    private String correo;
-    private String telefono;
-    private String contrasena;
+    private String email;
+    private String phone;
+    private String password;
     private String estado;
 
     // Constructor vacío (Esencial para frameworks y buenas prácticas)
@@ -14,13 +14,13 @@ public class Usuario {
     }
 
     // Constructor completo para cuando recuperamos datos de la BD
-    public Usuario(int idUsuario, int idRol, String name, String correo, String telefono, String contrasena, String estado) {
+    public Usuario(int idUsuario, int idRol, String name, String email, String phone, String password, String estado) {
         this.idUsuario = idUsuario;
         this.idRol = idRol;
         this.name = name;
-        this.correo = correo;
-        this.telefono = telefono;
-        this.contrasena = contrasena;
+        this.email = email;
+        this.phone = phone;
+        this.password = password;
         this.estado = estado;
     }
 
@@ -49,28 +49,28 @@ public class Usuario {
         this.name = name;
     }
 
-    public String getCorreo() {
-        return correo;
+    public String getEmail() {
+        return email;
     }
 
-    public void setCorreo(String correo) {
-        this.correo = correo;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public String getTelefono() {
-        return telefono;
+    public String getPhone() {
+        return phone;
     }
 
-    public void setTelefono(String telefono) {
-        this.telefono = telefono;
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
-    public String getContrasena() {
-        return contrasena;
+    public String getPassword() {
+        return password;
     }
 
-    public void setContrasena(String contrasena) {
-        this.contrasena = contrasena;
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getEstado() {

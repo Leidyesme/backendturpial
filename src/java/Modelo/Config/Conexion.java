@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class Conexion {
     // Parámetros de conexión a tu base de datos 'turpial'
-    private static final String URL = "jdbc:mysql://localhost:3000/turpial?serverTimezone=UTC&useSSL=false";
+    private static final String URL = "jdbc:mysql://localhost:3306/turpial?serverTimezone=UTC&useSSL=false";
     private static final String USER = "root"; // O el usuario que definiste en tu script ('admin' o 'clie')
     private static final String PASSWORD = "#Aprendiz2024"; 
     private static final String DRIVER = "com.mysql.cj.jdbc.Driver";

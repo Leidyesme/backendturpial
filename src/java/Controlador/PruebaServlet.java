@@ -43,16 +43,16 @@ public class PruebaServlet extends HttpServlet {
                 // 2. Mapeo rápido de datos extraídos del JSON manual o usando expresiones
                 // (Para evitar errores si no tienes Gson/Jackson en NetBeans, extraemos los textos básicos)
                 String name = extraerPropiedadJson(jsonInput, "name");
-                String correo = extraerPropiedadJson(jsonInput, "correo");
-                String telefono = extraerPropiedadJson(jsonInput, "telefono");
-                String contrasena = extraerPropiedadJson(jsonInput, "contrasena");
+                String email = extraerPropiedadJson(jsonInput, "email");
+                String phone = extraerPropiedadJson(jsonInput, "phone");
+                String password = extraerPropiedadJson(jsonInput, "password");
                 
                 // Construimos el objeto Usuario
                 Usuario nuevoUsuario = new Usuario();
                 nuevoUsuario.setName(name);
-                nuevoUsuario.setCorreo(correo);
-                nuevoUsuario.setTelefono(telefono);
-                nuevoUsuario.setContrasena(contrasena);
+                nuevoUsuario.setEmail(email);
+                nuevoUsuario.setPhone(phone);
+                nuevoUsuario.setPassword(password);
                 nuevoUsuario.setIdRol(3); // Por defecto 3 = Cliente
                 nuevoUsuario.setEstado("Activo");
 
