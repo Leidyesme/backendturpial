@@ -1,20 +1,21 @@
 package Modelo.Entidades;
 
 public class Usuario {
-    private int idUsuario;
-    private int idRol;
+    private String idUsuario;
+    private String idRol;
     private String name;
     private String email;
     private String phone;
     private String password;
     private String estado;
+    private String direccion;
 
     // Constructor vacío 
     public Usuario() {
     }
 
     // Constructor completo para cuando recuperamos datos de la BD
-    public Usuario(int idUsuario, int idRol, String name, String email, String phone, String password, String estado) {
+    public Usuario(String idUsuario, String idRol, String name, String email, String phone, String password, String estado, String direccion) {
         this.idUsuario = idUsuario;
         this.idRol = idRol;
         this.name = name;
@@ -22,22 +23,23 @@ public class Usuario {
         this.phone = phone;
         this.password = password;
         this.estado = estado;
+        this.direccion = direccion;
     }
 
     // Getters y Setters
-    public int getIdUsuario() {
+    public String getIdUsuario() {
         return idUsuario;
     }
 
-    public void setIdUsuario(int idUsuario) {
+    public void setIdUsuario(String idUsuario) {
         this.idUsuario = idUsuario;
     }
 
-    public int getIdRol() {
+    public String getIdRol() {
         return idRol;
     }
 
-    public void setIdRol(int idRol) {
+    public void setIdRol(String idRol) {
         this.idRol = idRol;
     }
 
@@ -79,5 +81,13 @@ public class Usuario {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public String getDireccion() {
+        return direccion;
+    }
+
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
     }
 }
