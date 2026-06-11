@@ -3,14 +3,15 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/DAO/ProductoDAO.java</file>
-            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Controlador/UserServlet.java</file>
-            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Controlador/PruebaServlet.java</file>
             <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Modelo/Config/Conexion.java</file>
             <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Modelo/Entidades/Usuario.java</file>
             <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/DAO/UsuarioDAO.java</file>
             <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Controlador/Filtros/CorsFilter.java</file>
             <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/web/META-INF/context.xml</file>
+            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/DAO/HistorialDAO.java</file>
+            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Controlador/HistorialServlet.java</file>
+            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Modelo/Entidades/Historial.java</file>
+            <file>file:/C:/Users/Propietario/Desktop/Nueva%20carpeta/turpialJava/src/java/Controlador/UsuarioServlet.java</file>
         </group>
     </open-files>
 </project-private>
