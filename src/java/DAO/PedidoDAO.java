@@ -121,11 +121,20 @@ public class PedidoDAO {
                     )
                 );
 
-                p.setNumeroMesa(
-                    rs.getInt(
-                        "numero_mesa"
-                    )
-                );
+                int numeroMesa =
+                    rs.getInt("numero_mesa");
+
+                /**
+                 * VALIDAR NULL.
+                 */
+                if (rs.wasNull()) {
+
+                    p.setNumeroMesa(null);
+
+                } else {
+
+                    p.setNumeroMesa(numeroMesa);
+                }
 
                 p.setDireccionEntrega(
                     rs.getString(

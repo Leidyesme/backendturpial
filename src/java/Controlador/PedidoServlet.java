@@ -2,18 +2,18 @@ package Controlador;
 
 import DAO.PedidoDAO;
 import Modelo.Entidades.Pedido;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 import java.io.PrintWriter;
-
+import java.io.BufferedReader;
 import java.util.List;
+import org.json.JSONObject;
+import org.json.JSONArray;
+
 
 /**
  * Servlet encargado
@@ -164,145 +164,90 @@ public class PedidoServlet extends HttpServlet {
      * Registrar pedido.
      */
     @Override
+
     protected void doPost(
             HttpServletRequest request,
             HttpServletResponse response
     )
-            throws ServletException,
-            IOException {
 
-        response.setContentType(
-                "application/json"
-        );
+    throws ServletException, IOException {
 
-        response.setCharacterEncoding(
-                "UTF-8"
-        );
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
-        /**
-         * Crear objeto pedido.
-         */
-        Pedido p =
-                new Pedido();
+        try {
 
-        /**
-         * Obtener datos
-         * enviados desde frontend.
-         */
-        p.setIdUsuario(
-            request.getParameter(
-                "idUsuario"
-            )
-        );
+            // LEER JSON ENVIADO
+            StringBuilder jsonBuilder = new StringBuilder();
+            String line;
+            BufferedReader reader =request.getReader();
 
-        p.setNombreClienteOpcional(
-            request.getParameter(
-                "nombreClienteOpcional"
-            )
-        );
+            while ((line = reader.readLine())!= null) {
+                jsonBuilder.append(line);
+            }
 
-        p.setTipoEntrega(
-            request.getParameter(
-                "tipoEntrega"
-            )
-        );
+            // CONVERTIR A JSON
+            JSONObject json =new JSONObject(jsonBuilder.toString());
 
-        /**
-         * Validar número mesa.
-         */
-        String mesa =
-            request.getParameter(
-                "numeroMesa"
-            );
+            // CREAR OBJETO PEDIDO
+            Pedido p =new Pedido();
 
-        if (
-            mesa != null
-            &&
-            !mesa.isEmpty()
-        ) {
+            // OBTENER DATOS
 
-            p.setNumeroMesa(
-                Integer.parseInt(mesa)
-            );
-        }
+            p.setIdUsuario(json.optString("idUsuario",null));
+            p.setNombreClienteOpcional(json.getString("nombreClienteOpcional"));
+            p.setTipoEntrega(json.getString("tipoEntrega"));
 
-        p.setDireccionEntrega(
-            request.getParameter(
-                "direccionEntrega"
-            )
-        );
+            // NUMERO DE MESA
+            if (!json.isNull("numeroMesa")) {
 
-        p.setObservaciones(
-            request.getParameter(
-                "observaciones"
-            )
-        );
+                p.setNumeroMesa(json.getInt("numeroMesa"));
 
-        p.setTotal(
-            Double.parseDouble(
-                request.getParameter(
-                    "total"
-                )
-            )
-        );
+            } else {
+                p.setNumeroMesa(null);
+            }
 
-        /**
-         * Estado inicial.
-         */
-        p.setEstado(
-            "En preparación"
-        );
+            // DIRECCION
+            p.setDireccionEntrega(json.optString("direccionEntrega",null));
 
-        /**
-         * Validación:
-         * consumo local requiere mesa.
-         */
-        if (
-            p.getTipoEntrega()
-                .equalsIgnoreCase(
-                    "Para consumir aquí"
-                )
-            &&
-            p.getNumeroMesa()
-                == null
-        ) {
+            // OBSERVACIONES
+            p.setObservaciones(json.optString("observaciones",""));
 
-            response.getWriter().write(
-                "{"
-                + "\"status\":\"error\","
-                + "\"message\":\"Debe ingresar número de mesa.\""
-                + "}"
-            );
+            // TOTAL
+            p.setTotal(json.getDouble("total"));
 
-            return;
-        }
+            // ESTADO
+            p.setEstado("En preparación");
 
-        /**
-         * Registrar pedido.
-         */
-        boolean registrado =
-                dao.registrar(p);
+            // VALIDAR MESA
+            if ("Para consumir aquí".equalsIgnoreCase(p.getTipoEntrega())&&p.getNumeroMesa()== null) {
 
-        /**
-         * Respuesta final.
-         */
-        if (registrado) {
+                response.getWriter().write("{"+ "\"status\":\"error\","+ "\"message\":\"Ingrese número de mesa\""+ "}");
+                return;
+            }
 
-            response.getWriter().write(
-                "{"
-                + "\"status\":\"success\","
-                + "\"message\":\"Pedido registrado correctamente.\""
-                + "}"
-            );
+            // MOSTRAR EN CONSOLA
+            System.out.println("Cliente: "+ p.getNombreClienteOpcional());
 
-        } else {
+            System.out.println("Total: "+ p.getTotal());
 
-            response.getWriter().write(
-                "{"
-                + "\"status\":\"error\","
-                + "\"message\":\"No se pudo registrar el pedido.\""
-                + "}"
-            );
+            // REGISTRAR
+            boolean registrado =dao.registrar(p);
+
+            // RESPUESTA
+            if (registrado) {
+
+                response.getWriter().write("{"+ "\"status\":\"success\","+ "\"message\":\"Pedido registrado correctamente\""+ "}");
+
+            } else {
+
+                response.getWriter().write("{"+ "\"status\":\"error\","+ "\"message\":\"Error registrando pedido\""+ "}");
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+            response.getWriter().write("{"+ "\"status\":\"error\","+ "\"message\":\""+ e.getMessage()+ "\""+ "}");
         }
     }
 }
