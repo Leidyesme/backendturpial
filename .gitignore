@@ -1,3 +1,14 @@
-/nbproject/private/
-/dist/
+# Archivos de compilación y distribución
 /build/
+/dist/
+/target/
+*.class
+*.war
+*.jar
+
+# Carpetas de IDEs (opcional pero recomendado)
+.settings/
+.project
+.classpath
+.idea/
+*.iml
