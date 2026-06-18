@@ -28,167 +28,173 @@ import org.json.JSONObject;
 // Importar JSONArray para manejar arreglos de objetos JSON
 import org.json.JSONArray;
 
-// Mapear la ruta URL del servlet como /HistorialServlet
+/**
+ * Servlet encargado de administrar el historial de pedidos de los usuarios.
+ * Recibe peticiones para registrar pedidos en lote y listar pedidos históricos.
+ */
 @WebServlet("/HistorialServlet")
-// Clase principal del servlet de historial de pedidos
 public class HistorialServlet extends HttpServlet {
 
     // Instancia del DAO de historial para persistir y consultar datos
     private final HistorialDAO historialDao = new HistorialDAO();
 
-    // Sobrescribir el método doPost para procesar peticiones HTTP POST
+    /**
+     * Procesa peticiones HTTP POST y GET delegadas.
+     * Soporta lectura de parámetros desde el cuerpo JSON o mediante parámetros de URL (fallback).
+     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            // Declaración de excepciones asociadas
             throws ServletException, IOException {
 
-        // Configurar cabeceras CORS para permitir peticiones desde cualquier origen
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        // Permitir métodos específicos en llamadas cruzadas
-        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-        // Habilitar cabeceras para la comunicación de JSON
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        // NOTA DE PORTABILIDAD Y SEGURIDAD: Las cabeceras CORS manuales (Access-Control-Allow-Origin, etc.)
+        // han sido removidas de este servlet, ya que son inyectadas de forma global por 'CorsFilter.java'.
+        // Mantenerlas aquí causaba cabeceras duplicadas ("*, *"), provocando que los navegadores modernos bloquearan las peticiones.
 
-        // Declarar el tipo de respuesta del servlet como JSON
+        // Declarar el tipo de respuesta del servlet como JSON y codificación UTF-8
         response.setContentType("application/json");
-        // Especificar la codificación de la salida a UTF-8
         response.setCharacterEncoding("UTF-8");
-        // Obtener el manejador de salida para escribir la respuesta
+        
+        // Obtener el PrintWriter para emitir la respuesta JSON al cliente
         PrintWriter out = response.getWriter();
 
         // Obtener el parámetro 'accion' desde la URL
         String accion = request.getParameter("accion");
 
-        // Instanciar un objeto de respuesta JSON
+        // Instanciar el objeto JSON que contendrá la respuesta final
         JSONObject jsonRespuesta = new JSONObject();
 
-        // Bloque try-catch para capturar errores de ejecución
         try {
-            // Leer el contenido JSON del cuerpo de la petición
+            // Leer el contenido del cuerpo de la petición (JSON)
             StringBuilder sb = new StringBuilder();
-            // Variable temporal para guardar las líneas leídas
             String linea;
-            // Usar try-with-resources para asegurar el cierre de Reader
             try (BufferedReader reader = request.getReader()) {
-                // Iterar hasta leer todo el contenido del cuerpo
                 while ((linea = reader.readLine()) != null) {
-                    // Adjuntar línea al buffer
                     sb.append(linea);
                 }
             }
-            // Asignar el contenido a un String final
+            
+            // Asignar el cuerpo de la petición a un String
             String cuerpoPeticion = sb.toString();
 
-            // Evaluar si la acción es registrar un nuevo pedido
+            // MÓDULO 1: REGISTRAR UN NUEVO PEDIDO
             if ("registrar".equals(accion)) {
-                // Convertir el cuerpo leído a un JSONObject
+                // Validar que el cuerpo no esté vacío para el registro
+                if (cuerpoPeticion.trim().isEmpty()) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "El cuerpo de la petición está vacío. Se requiere un objeto JSON.");
+                    out.print(jsonRespuesta.toString());
+                    return;
+                }
+
+                // Convertir el cuerpo leído a un JSONObject de entrada
                 JSONObject jsonEntrada = new JSONObject(cuerpoPeticion);
-                // Obtener el ID del usuario que realiza la compra
+                
+                // Extraer atributos obligatorios para el registro
                 String idUsuario = jsonEntrada.getString("idUsuario");
-                // Obtener el monto total del pedido
                 double total = jsonEntrada.getDouble("total");
-                // Obtener el listado de productos del carrito como JSONArray
+                // Obtener el listado de productos del carrito
                 JSONArray productos = jsonEntrada.getJSONArray("products");
 
                 // Instanciar entidad Historial
                 Historial pedido = new Historial();
-                // Asignar el ID de usuario a la orden
                 pedido.setIdUsuario(idUsuario);
-                // Asignar el total monetario a la orden
                 pedido.setTotal(total);
-                // Asignar el estado inicial "En proceso" a la orden
-                pedido.setEstado("En proceso");
+                pedido.setEstado("En preparación"); // Definir estado inicial estándar
 
-                // Llamar al DAO para registrar el pedido y sus detalles en MySQL
+                // Guardar la información compuesta en base de datos mediante el DAO
                 boolean registrado = historialDao.registrarPedido(pedido, productos);
 
-                // Comprobar si se completó el registro en base de datos
+                // Responder según el resultado de la transacción
                 if (registrado) {
-                    // Marcar estado exitoso
                     jsonRespuesta.put("status", "success");
-                    // Mensaje de éxito del pedido
                     jsonRespuesta.put("message", "Pedido registrado exitosamente en la base de datos.");
                 } else {
-                    // Marcar estado de error
                     jsonRespuesta.put("status", "error");
-                    // Mensaje informativo del error al guardar en la BD
                     jsonRespuesta.put("message", "No se pudo registrar el pedido en la base de datos.");
                 }
             }
-            // Evaluar si la acción es listar los pedidos del usuario
+            // MÓDULO 2: LISTAR EL HISTORIAL DE PEDIDOS
             else if ("listar".equals(accion)) {
-                // Parsear la cadena JSON entrante
-                JSONObject jsonEntrada = new JSONObject(cuerpoPeticion);
-                // Obtener el ID del usuario del JSON
-                String idUsuario = jsonEntrada.getString("idUsuario");
+                String idUsuario = null;
+
+                // Validar si el cuerpo de la petición contiene información
+                if (!cuerpoPeticion.trim().isEmpty()) {
+                    // Parsear el JSON para extraer el idUsuario
+                    JSONObject jsonEntrada = new JSONObject(cuerpoPeticion);
+                    idUsuario = jsonEntrada.optString("idUsuario", null);
+                }
+                
+                // FALLBACK: Si no vino en el cuerpo JSON, intentar leer el idUsuario desde la URL (soporte para GET)
+                if (idUsuario == null || idUsuario.isEmpty()) {
+                    idUsuario = request.getParameter("idUsuario");
+                }
+
+                // Si no se proporcionó idUsuario en ninguna de las vías, responder con error
+                if (idUsuario == null || idUsuario.isEmpty()) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "Se requiere el parámetro 'idUsuario'.");
+                    out.print(jsonRespuesta.toString());
+                    return;
+                }
 
                 // Obtener la lista de pedidos del usuario usando el DAO
                 List<Historial> lista = historialDao.obtenerHistorialUsuario(idUsuario);
 
-                // Instanciar un JSONArray para almacenar el listado en formato JSON
+                // Instanciar un JSONArray para almacenar la lista en formato JSON
                 JSONArray arrayPedidos = new JSONArray();
-                // Recorrer cada pedido en la lista obtenida
                 for (Historial h : lista) {
-                    // Crear un objeto JSON por cada pedido individual
                     JSONObject item = new JSONObject();
-                    // Agregar el ID del pedido al objeto
                     item.put("idPedido", h.getIdPedido());
-                    // Agregar el ID del usuario al objeto
                     item.put("idUsuario", h.getIdUsuario());
-                    // Agregar la fecha del pedido al objeto
                     item.put("date", h.getFecha());
-                    // Agregar el total monetario al objeto
                     item.put("total", h.getTotal());
-                    // Agregar el estado de entrega al objeto
                     item.put("status", h.getEstado());
-                    // Insertar el objeto de pedido en el JSONArray
+                    item.put("tipoEntrega", h.getTipoEntrega() != null ? h.getTipoEntrega() : "");
+                    item.put("customerName", h.getCustomerName() != null ? h.getCustomerName() : "Cliente Anónimo");
                     arrayPedidos.put(item);
                 }
 
-                // Asignar estado exitoso a la respuesta principal
+                // Construir respuesta exitosa con la colección integrada
                 jsonRespuesta.put("status", "success");
-                // Anidar el listado de pedidos en la respuesta
                 jsonRespuesta.put("orders", arrayPedidos);
             }
-            // Manejar acción no válida
+            // ACCIÓN NO CONTROLADA
             else {
-                // Marcar estado de error
                 jsonRespuesta.put("status", "error");
-                // Mensaje indicando acción inválida
                 jsonRespuesta.put("message", "Acción no reconocida.");
             }
         } catch (Exception e) {
-            // Asignar estado de error general
+            // Registrar excepción en la consola del servidor
+            e.printStackTrace();
+            
+            // Construir respuesta de error interna
             jsonRespuesta.put("status", "error");
-            // Mensaje informativo del error del sistema
             jsonRespuesta.put("message", "Error interno en el servlet: " + e.getMessage());
         }
 
         // Retornar la respuesta JSON construida al cliente
         out.print(jsonRespuesta.toString());
+        out.flush();
     }
 
-    // Sobrescribir el método doOptions para el preflight de CORS
+    /**
+     * Maneja las peticiones Preflight de CORS delegando al filtro o respondiendo OK.
+     */
     @Override
     protected void doOptions(HttpServletRequest request, HttpServletResponse response)
-            // Declaración de excepciones asociadas
             throws ServletException, IOException {
-        // Habilitar acceso de origen cruzado
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        // Habilitar métodos HTTP específicos
-        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-        // Habilitar cabeceras requeridas para comunicación JSON
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
-        // Asignar estado 200 OK
+        // Responder con un estado HTTP 200 OK, delegando las cabeceras al filtro global
         response.setStatus(HttpServletResponse.SC_OK);
     }
 
-    // Sobrescribir el método doGet para reenviar la petición
+    /**
+     * Procesa peticiones HTTP GET delegándolas al método doPost para compatibilidad
+     * con la recuperación de historial directa desde parámetros en la URL.
+     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            // Declaración de excepciones asociadas
             throws ServletException, IOException {
-        // Delegar peticiones GET a doPost (opcional en historial por si se requiere listar mediante parámetros URL)
+        // Redirigir el procesamiento al método doPost de forma segura
         doPost(request, response);
     }
 }

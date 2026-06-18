@@ -42,12 +42,9 @@ public class UsuarioServlet extends HttpServlet {
             // Declaración de las excepciones que puede arrojar este método
             throws ServletException, IOException {
 
-        // Permitir el acceso CORS desde cualquier origen para el frontend en desarrollo
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        // Definir los métodos HTTP permitidos en las peticiones CORS
-        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-        // Permitir la cabecera Content-Type para la recepción de JSON
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        // NOTA: Las cabeceras CORS manuales han sido removidas de este servlet porque
+        // CorsFilter.java ya maneja CORS de forma global para todas las rutas (/*).
+        // Duplicarlas aquí causa errores de bloqueo de CORS en el navegador debido a cabeceras múltiples.
 
         // Establecer el tipo de contenido de la respuesta como JSON
         response.setContentType("application/json");
@@ -383,12 +380,7 @@ public class UsuarioServlet extends HttpServlet {
     protected void doOptions(HttpServletRequest request, HttpServletResponse response)
             // Declaración de excepciones asociadas
             throws ServletException, IOException {
-        // Permitir peticiones desde cualquier origen
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        // Definir los métodos HTTP soportados por el servlet
-        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-        // Permitir cabeceras específicas necesarias para JSON
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        // Las cabeceras CORS son inyectadas de forma global por CorsFilter.java
         // Responder con un estado HTTP 200 OK
         response.setStatus(HttpServletResponse.SC_OK);
     }

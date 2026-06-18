@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Servicio de Base de Datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: turpial_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin1234
+      MYSQL_DATABASE: turpial
+    ports:
+      - "3306:3306"
+    volumes:
+      # Montar el script de inicialización para configurar tablas, datos y permisos en el arranque
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin1234"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Servicio de Servidor de Aplicaciones (Apache Tomcat 10)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: turpial_backend
+    restart: always
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      # Parámetros de conexión a la BD dentro del entorno virtual de red de Docker
+      - DB_URL=jdbc:mysql://db:3306/turpial?serverTimezone=UTC&useSSL=false
+      - DB_USER=root
+      - DB_PASSWORD=admin1234
+      - DB_DRIVER=com.mysql.cj.jdbc.Driver
+    depends_on:
+      db:
+        condition: service_healthy

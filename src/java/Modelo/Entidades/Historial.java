@@ -20,6 +20,10 @@ public class Historial {
 
     private String estado;
 
+    private String tipoEntrega;
+
+    private String customerName;
+
     /**
      * GETTERS Y SETTERS
      */
@@ -87,5 +91,21 @@ public class Historial {
 
         this.estado =
             estado;
+    }
+
+    public String getTipoEntrega() {
+        return tipoEntrega;
+    }
+
+    public void setTipoEntrega(String tipoEntrega) {
+        this.tipoEntrega = tipoEntrega;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
     }
 }
