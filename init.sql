@@ -277,24 +277,27 @@ CREATE TABLE IF NOT EXISTS Address (
 );
 
 -- 13. TABLA DEVOLUCION
-CREATE TABLE IF NOT EXISTS Devolucion (
+DROP TABLE IF EXISTS Devolucion;
+CREATE TABLE Devolucion (
     id_devolucion VARCHAR(10) NOT NULL,
     id_pedido VARCHAR(10) NOT NULL,
-    motivo VARCHAR(150) NOT NULL,
-    valor_reembolso DECIMAL(10,2),
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    motivo VARCHAR(255) NOT NULL,
+    fecha_solicitud DATETIME NOT NULL,
+    estado_devolucion VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
     PRIMARY KEY (id_devolucion),
-    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido)
+    FOREIGN KEY (id_pedido) REFERENCES Pedido (id_pedido) ON DELETE CASCADE
 );
 
 -- 14. TABLA AUDITORIA
-CREATE TABLE IF NOT EXISTS Auditoria (
+DROP TABLE IF EXISTS Auditoria;
+CREATE TABLE Auditoria (
     id_historial VARCHAR(10) NOT NULL,
     id_usuario VARCHAR(10) NOT NULL,
-    accion VARCHAR(100) NOT NULL,
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    accion VARCHAR(255) NOT NULL,
+    tipo_accion VARCHAR(50) NOT NULL,
+    fecha DATETIME NOT NULL,
     PRIMARY KEY (id_historial),
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario)
+    FOREIGN KEY (id_usuario) REFERENCES Usuario (id_usuario) ON DELETE CASCADE
 );
 
 -- =========================================================================
