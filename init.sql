@@ -284,6 +284,7 @@ CREATE TABLE Devolucion (
     motivo VARCHAR(255) NOT NULL,
     fecha_solicitud DATETIME NOT NULL,
     estado_devolucion VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
+    respuesta_admin VARCHAR(255) NULL,
     PRIMARY KEY (id_devolucion),
     FOREIGN KEY (id_pedido) REFERENCES Pedido (id_pedido) ON DELETE CASCADE
 );

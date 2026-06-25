@@ -11,10 +11,6 @@
                     <path-in-war>WEB-INF/lib</path-in-war>
                 </library>
                 <library dirs="200">
-                    <file>${file.reference.Downloads-mysql-connector-j-9.7.0}</file>
-                    <path-in-war>WEB-INF/classes</path-in-war>
-                </library>
-                <library dirs="200">
                     <file>${file.reference.mysql-connector-j-9.7.0.jar-1}</file>
                     <path-in-war>WEB-INF/lib</path-in-war>
                 </library>

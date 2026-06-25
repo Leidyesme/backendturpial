@@ -10,6 +10,7 @@ public class Devolucion {
     private String motivo;
     private String fechaSolicitud;
     private String estadoDevolucion;
+    private String respuestaAdmin;
 
     /**
      * Constructor vacío.
@@ -72,5 +73,13 @@ public class Devolucion {
 
     public void setEstadoDevolucion(String estadoDevolucion) {
         this.estadoDevolucion = estadoDevolucion;
+    }
+    
+    public String getRespuestaAdmin() { 
+        return respuestaAdmin; 
+    }
+    
+    public void setRespuestaAdmin(String respuestaAdmin) { 
+        this.respuestaAdmin = respuestaAdmin; 
     }
 }

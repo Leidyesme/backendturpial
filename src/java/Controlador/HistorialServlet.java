@@ -3,8 +3,9 @@ package Controlador;
 
 // Importar el DAO para interactuar con la base de datos de historial
 import DAO.HistorialDAO;
-// Importar la entidad Historial para representar los datos de un pedido
+import DAO.UsuarioDAO;
 import Modelo.Entidades.Historial;
+import Modelo.Entidades.Usuario;
 // Importar BufferedReader para leer el flujo de datos del request
 import java.io.BufferedReader;
 // Importar IOException para la gestión de errores de E/S
@@ -137,8 +138,32 @@ public class HistorialServlet extends HttpServlet {
                     return;
                 }
 
-                // Obtener la lista de pedidos del usuario usando el DAO
-                List<Historial> lista = historialDao.obtenerHistorialUsuario(idUsuario);
+                // CONTROL DE ACCESO BASADO EN ROLES (RBAC):
+                // Justificación de negocio:
+                // - Administrador ("ROL-001"): Tiene permiso para auditar/ver todos los pedidos realizados en el sistema.
+                // - Cliente ("ROL-003"): Solo puede visualizar sus propios pedidos.
+                // - Empleado ("ROL-002"): No tiene acceso al módulo de historial de pedidos.
+                UsuarioDAO usuarioDao = new UsuarioDAO();
+                Usuario user = usuarioDao.obtenerUsuarioPorId(idUsuario);
+
+                List<Historial> lista;
+                if (user == null) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "Usuario no encontrado.");
+                    out.print(jsonRespuesta.toString());
+                    return;
+                }
+
+                if ("ROL-001".equals(user.getIdRol())) {
+                    lista = historialDao.obtenerTodosLosPedidos();
+                } else if ("ROL-003".equals(user.getIdRol())) {
+                    lista = historialDao.obtenerHistorialUsuario(idUsuario);
+                } else {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "Acceso denegado: El rol asignado no cuenta con permisos para ver historiales de pedidos.");
+                    out.print(jsonRespuesta.toString());
+                    return;
+                }
 
                 // Instanciar un JSONArray para almacenar la lista en formato JSON
                 JSONArray arrayPedidos = new JSONArray();

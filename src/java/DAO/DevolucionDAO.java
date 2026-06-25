@@ -15,6 +15,31 @@ import java.util.List;
  */
 public class DevolucionDAO {
 
+    static {
+        // Migración automática: asegura que la columna 'respuesta_admin' exista en la tabla Devolucion.
+        // Se ejecuta una sola vez al cargar la clase en la máquina virtual.
+        try (Connection con = Conexion.getConnection()) {
+            if (con != null) {
+                try (PreparedStatement ps = con.prepareStatement(
+                        "ALTER TABLE Devolucion ADD COLUMN IF NOT EXISTS respuesta_admin VARCHAR(255) NULL")) {
+                    ps.executeUpdate();
+                    System.out.println("Migración Devolucion: Columna respuesta_admin verificada/creada exitosamente.");
+                } catch (SQLException e) {
+                    // Fallback para versiones de MySQL que no soportan IF NOT EXISTS en ALTER TABLE
+                    try (PreparedStatement ps2 = con.prepareStatement(
+                            "ALTER TABLE Devolucion ADD respuesta_admin VARCHAR(255) NULL")) {
+                        ps2.executeUpdate();
+                        System.out.println("Migración Devolucion: Columna respuesta_admin agregada mediante fallback.");
+                    } catch (SQLException ex) {
+                        // Excepción esperada si la columna ya existía en la tabla
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Advertencia ejecutando migración estática de Devolucion: " + e.getMessage());
+        }
+    }
+
     /**
      * Constructor por defecto del DAO de Devoluciones.
      */
@@ -98,6 +123,7 @@ public class DevolucionDAO {
                     dev.setMotivo(rs.getString("motivo"));
                     dev.setFechaSolicitud(rs.getString("fecha_solicitud"));
                     dev.setEstadoDevolucion(rs.getString("estado_devolucion"));
+                    dev.setRespuestaAdmin(rs.getString("respuesta_admin"));
                     lista.add(dev);
                 }
             }
@@ -129,6 +155,7 @@ public class DevolucionDAO {
                 dev.setMotivo(rs.getString("motivo"));
                 dev.setFechaSolicitud(rs.getString("fecha_solicitud"));
                 dev.setEstadoDevolucion(rs.getString("estado_devolucion"));
+                dev.setRespuestaAdmin(rs.getString("respuesta_admin"));
                 lista.add(dev);
             }
         } catch (SQLException e) {
@@ -138,4 +165,19 @@ public class DevolucionDAO {
 
         return lista;
     }
+    
+    // MEtodo para que el administrador actualice el estado y la respuesta
+    public boolean procesarDevolucion(String idDevolucion, String estado, String respuesta) {
+    String sql = "UPDATE Devolucion SET estado_devolucion = ?, respuesta_admin = ? WHERE id_devolucion = ?";
+    try (Connection con = Conexion.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, estado);
+        ps.setString(2, respuesta);
+        ps.setString(3, idDevolucion);
+        return ps.executeUpdate() > 0;
+    } catch (SQLException e) {
+        e.printStackTrace();
+        return false;
+    }
+}
 }

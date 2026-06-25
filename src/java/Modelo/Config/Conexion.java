@@ -41,7 +41,7 @@ public class Conexion {
             conexion = DriverManager.getConnection(URL, USER, PASSWORD);
             
             // Registrar éxito de conexión en la consola del servidor
-            System.out.println("Conexión exitosa a la base de datos 'turpial'.");
+            System.out.println("conectando a:"+URL);
         } catch (ClassNotFoundException e) {
             // Capturar error si el driver JDBC de MySQL no está presente en el classpath
             System.err.println("Error: No se encontró el Driver de MySQL -> " + e.getMessage());

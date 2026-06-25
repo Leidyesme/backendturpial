@@ -232,4 +232,47 @@ public class HistorialDAO {
         // Retornar lista
         return lista;
     }
+
+    /**
+     * Recupera el listado completo de todos los pedidos realizados en el sistema.
+     * Método reservado para visualización administrativa (Administrador).
+     *
+     * @return Lista de objetos Historial correspondientes a todos los pedidos.
+     */
+    public List<Historial> obtenerTodosLosPedidos() {
+        List<Historial> lista = new ArrayList<>();
+        // Consulta SQL con LEFT JOIN para recuperar nombre de cliente e información de entrega de todos los pedidos
+        String sql = "SELECT p.*, u.name AS user_name FROM pedido p "
+                   + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario "
+                   + "ORDER BY p.fecha_pedido DESC";
+
+        try (Connection con = Conexion.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    // Mapear cada registro encontrado
+                    while (rs.next()) {
+                        Historial h = new Historial();
+                        h.setIdPedido(rs.getString("id_pedido"));
+                        h.setIdUsuario(rs.getString("id_usuario"));
+                        h.setFecha(rs.getString("fecha_pedido"));
+                        h.setTotal(rs.getDouble("total"));
+                        h.setEstado(rs.getString("estado"));
+                        h.setTipoEntrega(rs.getString("tipo_entrega"));
+
+                        String clientName = rs.getString("customer_name");
+                        if (clientName == null || clientName.trim().isEmpty()) {
+                            clientName = rs.getString("user_name");
+                        }
+                        h.setCustomerName(clientName != null ? clientName : "Cliente Anónimo");
+
+                        lista.add(h);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("ERROR SQL AL OBTENER HISTORIAL GENERAL: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return lista;
+    }
 }
