@@ -43,9 +43,9 @@ public class HistorialDAO {
      * @param productos JSONArray con el detalle de productos enviados desde el cliente.
      * @return true si la transacción se completó correctamente, false de lo contrario.
      */
-    public boolean registrarPedido(Historial h, JSONArray productos) {
-        // 1. OBTENER EL ID SIGUIENTE PARA EL PEDIDO
-        String queryNextPedidoId = "SELECT id_pedido FROM pedido ORDER BY id_pedido DESC LIMIT 1";
+    public boolean registrarPedido(Historial h, JSONArray productos, String tipoEntrega, Integer numeroMesa, String direccionEntrega) {
+        // 1. OBTENER EL ID SIGUIENTE PARA EL PEDIDO ORDENADO NUMÉRICAMENTE
+        String queryNextPedidoId = "SELECT id_pedido FROM pedido ORDER BY CAST(SUBSTRING(id_pedido, 5) AS UNSIGNED) DESC LIMIT 1";
         String nextPedidoId = "PED-001";
         
         try (Connection con = Conexion.getConnection();
@@ -69,8 +69,8 @@ public class HistorialDAO {
         // Asignar el ID calculado a la cabecera del pedido
         h.setIdPedido(nextPedidoId);
 
-        // 2. OBTENER EL ID SIGUIENTE PARA EL DETALLE DEL PEDIDO
-        String queryNextDetalleId = "SELECT id_detallepedido FROM detallepedido ORDER BY id_detallepedido DESC LIMIT 1";
+        // 2. OBTENER EL ID SIGUIENTE PARA EL DETALLE DEL PEDIDO ORDENADO NUMÉRICAMENTE
+        String queryNextDetalleId = "SELECT id_detallepedido FROM detallepedido ORDER BY CAST(SUBSTRING(id_detallepedido, 5) AS UNSIGNED) DESC LIMIT 1";
         int lastDetalleNum = 0;
         
         try (Connection con = Conexion.getConnection();
@@ -91,8 +91,8 @@ public class HistorialDAO {
         }
 
         // 3. DECLARAR CONSULTAS SQL
-        // Sentencia para insertar en la cabecera (pedido)
-        String sqlPedido = "INSERT INTO pedido (id_pedido, id_usuario, tipo_entrega, total, estado, fecha_pedido) VALUES (?, ?, ?, ?, ?, ?)";
+        // Sentencia para insertar en la cabecera (pedido) incluyendo las columnas adicionales
+        String sqlPedido = "INSERT INTO pedido (id_pedido, id_usuario, tipo_entrega, total, estado, fecha_pedido, numero_mesa, direccion_entrega) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         // Sentencia para insertar en la tabla de detalles (detallepedido).
         // CORRECCIÓN DE BUG: Se ha removido la columna 'subtotal' de la consulta INSERT, 
@@ -111,11 +111,21 @@ public class HistorialDAO {
                 // Configurar los parámetros de la cabecera del pedido
                 psP.setString(1, h.getIdPedido());
                 psP.setString(2, h.getIdUsuario());
-                psP.setString(3, "Para consumir aquí"); // Tipo de entrega por defecto en este canal
+                psP.setString(3, tipoEntrega != null ? tipoEntrega : "Para consumir aquí");
                 psP.setDouble(4, h.getTotal());
                 psP.setString(5, "En preparación"); // Estado inicial válido
                 // Establecer fecha actual
                 psP.setTimestamp(6, new java.sql.Timestamp(System.currentTimeMillis()));
+                
+                // Manejar número de mesa opcional
+                if (numeroMesa != null && numeroMesa > 0) {
+                    psP.setInt(7, numeroMesa);
+                } else {
+                    psP.setNull(7, java.sql.Types.INTEGER);
+                }
+
+                // Manejar dirección opcional
+                psP.setString(8, direccionEntrega);
 
                 // Insertar cabecera del pedido
                 int filasAfectadas = psP.executeUpdate();

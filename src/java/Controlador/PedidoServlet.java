@@ -47,46 +47,60 @@ public class PedidoServlet extends HttpServlet {
         // Configurar el tipo de respuesta a JSON y codificación UTF-8
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-
-        // Obtener la lista de pedidos desde la base de datos a través del DAO
-        List<Pedido> lista = dao.listar();
-
-        // Instanciar un JSONArray para construir la respuesta estructurada de forma segura
-        JSONArray jsonArray = new JSONArray();
-
-        // Iterar sobre cada pedido recuperado y convertirlo a un JSONObject
-        for (Pedido p : lista) {
-            JSONObject jsonItem = new JSONObject();
-            // Asignar identificador del pedido
-            jsonItem.put("idPedido", p.getIdPedido());
-            // Asignar ID de usuario (manejar opcionalidad con cadena vacía si es nulo)
-            jsonItem.put("idUsuario", p.getIdUsuario() != null ? p.getIdUsuario() : "");
-            // Asignar nombre del cliente no registrado
-            jsonItem.put("nombreClienteOpcional", p.getNombreClienteOpcional() != null ? p.getNombreClienteOpcional() : "");
-            // Asignar el tipo de entrega
-            jsonItem.put("tipoEntrega", p.getTipoEntrega());
-            // Asignar el número de mesa (si es nulo, registrar NULL formal en JSON)
-            jsonItem.put("numeroMesa", p.getNumeroMesa() != null ? p.getNumeroMesa() : JSONObject.NULL);
-            // Asignar la dirección de entrega
-            jsonItem.put("direccionEntrega", p.getDireccionEntrega() != null ? p.getDireccionEntrega() : "");
-            // Asignar observaciones del pedido
-            jsonItem.put("observaciones", p.getObservaciones() != null ? p.getObservaciones() : "");
-            // Asignar el total monetario
-            jsonItem.put("total", p.getTotal());
-            // Asignar el estado del pedido
-            jsonItem.put("estado", p.getEstado());
-            // Asignar la fecha del registro del pedido
-            jsonItem.put("fechaPedido", p.getFechaPedido() != null ? p.getFechaPedido() : "");
-
-            // Agregar el objeto de pedido al arreglo
-            jsonArray.put(jsonItem);
-        }
-
-        // Obtener the PrintWriter del HttpServletResponse para enviar la respuesta
         PrintWriter out = response.getWriter();
-        // Serializar el arreglo JSON a cadena y escribirlo
-        out.print(jsonArray.toString());
-        // Forzar el envío de los datos en el buffer de salida
+
+        // Leer parámetro idPedido de la URL
+        String idPedido = request.getParameter("idPedido");
+
+        if (idPedido != null && !idPedido.trim().isEmpty()) {
+            System.out.println("[INFO - PedidoServlet] doGet recibido con idPedido=" + idPedido);
+            // Obtener el pedido completo con sus productos desde la base de datos
+            JSONObject pedidoJson = dao.obtenerPedidoConProductos(idPedido);
+            if (pedidoJson != null) {
+                out.print(pedidoJson.toString());
+            } else {
+                JSONObject errorJson = new JSONObject();
+                errorJson.put("status", "error");
+                errorJson.put("message", "Pedido no encontrado");
+                out.print(errorJson.toString());
+            }
+        } else {
+            System.out.println("[INFO - PedidoServlet] doGet listando todos los pedidos");
+            // Obtener la lista de pedidos desde la base de datos a través del DAO
+            List<Pedido> lista = dao.listar();
+
+            // Instanciar un JSONArray para construir la respuesta estructurada de forma segura
+            JSONArray jsonArray = new JSONArray();
+
+            // Iterar sobre cada pedido recuperado y convertirlo a un JSONObject
+            for (Pedido p : lista) {
+                JSONObject jsonItem = new JSONObject();
+                // Asignar identificador del pedido
+                jsonItem.put("idPedido", p.getIdPedido());
+                // Asignar ID de usuario (manejar opcionalidad con cadena vacía si es nulo)
+                jsonItem.put("idUsuario", p.getIdUsuario() != null ? p.getIdUsuario() : "");
+                // Asignar nombre del cliente no registrado o nombre de usuario
+                jsonItem.put("nombreClienteOpcional", p.getNombreClienteOpcional() != null ? p.getNombreClienteOpcional() : "");
+                // Asignar el tipo de entrega
+                jsonItem.put("tipoEntrega", p.getTipoEntrega());
+                // Asignar el número de mesa (si es nulo, registrar NULL formal en JSON)
+                jsonItem.put("numeroMesa", p.getNumeroMesa() != null ? p.getNumeroMesa() : JSONObject.NULL);
+                // Asignar la dirección de entrega
+                jsonItem.put("direccionEntrega", p.getDireccionEntrega() != null ? p.getDireccionEntrega() : "");
+                // Asignar observaciones del pedido
+                jsonItem.put("observaciones", p.getObservaciones() != null ? p.getObservaciones() : "");
+                // Asignar el total monetario
+                jsonItem.put("total", p.getTotal());
+                // Asignar el estado del pedido
+                jsonItem.put("estado", p.getEstado());
+                // Asignar la fecha del registro del pedido
+                jsonItem.put("fechaPedido", p.getFechaPedido() != null ? p.getFechaPedido() : "");
+
+                // Agregar el objeto de pedido al arreglo
+                jsonArray.put(jsonItem);
+            }
+            out.print(jsonArray.toString());
+        }
         out.flush();
     }
 
@@ -178,5 +192,54 @@ public class PedidoServlet extends HttpServlet {
             errorRes.put("message", "Error procesando el pedido: " + e.getMessage());
             response.getWriter().write(errorRes.toString());
         }
+    }
+
+    /**
+     * Procesa peticiones HTTP PUT para actualizar el estado de un pedido existente.
+     */
+    @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        JSONObject jsonRespuesta = new JSONObject();
+
+        try {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            try (BufferedReader reader = request.getReader()) {
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            String body = sb.toString();
+
+            if (body.trim().isEmpty()) {
+                jsonRespuesta.put("status", "error");
+                jsonRespuesta.put("message", "Cuerpo JSON vacío");
+                response.getWriter().print(jsonRespuesta.toString());
+                return;
+            }
+
+            JSONObject json = new JSONObject(body);
+            String idPedido = json.getString("idPedido");
+            String nuevoEstado = json.getString("status");
+
+            System.out.println("[INFO - PedidoServlet] doPut recibido: idPedido=" + idPedido + ", estado=" + nuevoEstado);
+
+            boolean actualizado = dao.actualizarEstado(idPedido, nuevoEstado);
+            if (actualizado) {
+                jsonRespuesta.put("status", "success");
+                jsonRespuesta.put("message", "Estado del pedido actualizado exitosamente en MySQL");
+            } else {
+                jsonRespuesta.put("status", "error");
+                jsonRespuesta.put("message", "No se pudo actualizar el estado del pedido en la base de datos");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            jsonRespuesta.put("status", "error");
+            jsonRespuesta.put("message", "Error interno en el servidor: " + e.getMessage());
+        }
+        response.getWriter().print(jsonRespuesta.toString());
     }
 }

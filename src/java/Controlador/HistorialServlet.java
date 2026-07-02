@@ -96,14 +96,29 @@ public class HistorialServlet extends HttpServlet {
                 // Obtener el listado de productos del carrito
                 JSONArray productos = jsonEntrada.getJSONArray("products");
 
+                // Extraer información de entrega adicional enviada por el cliente
+                String tipoEntrega = jsonEntrada.optString("tipoEntrega", "Para consumir aquí");
+                String direccion = jsonEntrada.optString("direccion", null);
+                Integer numeroMesa = null;
+                if (!jsonEntrada.isNull("numeroMesa")) {
+                    String mesaStr = String.valueOf(jsonEntrada.get("numeroMesa")).trim();
+                    if (!mesaStr.isEmpty() && !mesaStr.equalsIgnoreCase("null")) {
+                        try {
+                            numeroMesa = Integer.parseInt(mesaStr);
+                        } catch (NumberFormatException e) {
+                            System.err.println("Error parseando número de mesa en HistorialServlet: " + e.getMessage());
+                        }
+                    }
+                }
+
                 // Instanciar entidad Historial
                 Historial pedido = new Historial();
                 pedido.setIdUsuario(idUsuario);
                 pedido.setTotal(total);
                 pedido.setEstado("En preparación"); // Definir estado inicial estándar
 
-                // Guardar la información compuesta en base de datos mediante el DAO
-                boolean registrado = historialDao.registrarPedido(pedido, productos);
+                // Guardar la información compuesta en base de datos mediante el DAO (con parámetros de entrega)
+                boolean registrado = historialDao.registrarPedido(pedido, productos, tipoEntrega, numeroMesa, direccion);
 
                 // Responder según el resultado de la transacción
                 if (registrado) {

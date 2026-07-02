@@ -29,7 +29,7 @@ public class AuditoriaDAO {
      * @return true si el registro fue exitoso, false en caso contrario.
      */
     public boolean registrarActividad(Auditoria aud) {
-        String queryMaxId = "SELECT id_historial FROM Auditoria ORDER BY id_historial DESC LIMIT 1";
+        String queryMaxId = "SELECT id_historial FROM Auditoria ORDER BY CAST(SUBSTRING(id_historial, 5) AS UNSIGNED) DESC LIMIT 1";
         String nextId = "AUD-001";
 
         // Obtener el último ID registrado para calcular el consecutivo

@@ -54,7 +54,7 @@ public class DevolucionDAO {
      * @return true si el registro fue exitoso, false en caso contrario.
      */
     public boolean solicitarDevolucion(Devolucion dev) {
-        String queryMaxId = "SELECT id_devolucion FROM Devolucion ORDER BY id_devolucion DESC LIMIT 1";
+        String queryMaxId = "SELECT id_devolucion FROM Devolucion ORDER BY CAST(SUBSTRING(id_devolucion, 5) AS UNSIGNED) DESC LIMIT 1";
         String nextId = "DEV-001";
 
         // Obtener el último ID registrado para calcular el consecutivo
