@@ -325,6 +325,51 @@ public class UsuarioDAO {
     }
 
     /**
+     * Verifica si un número de teléfono ya está registrado en la base de datos.
+     *
+     * @param phone Número de teléfono a comprobar.
+     * @return true si el teléfono existe, false de lo contrario.
+     */
+    public boolean existsPhone(String phone) {
+        String sql = "SELECT COUNT(*) FROM usuario WHERE phone = ?";
+        try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, phone);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error comprobando existencia del teléfono: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Verifica si un número de teléfono ya está registrado en la base de datos
+     * por otro usuario diferente al indicado por idUsuario.
+     *
+     * @param phone Número de teléfono a comprobar.
+     * @param idUsuario Identificador del usuario a excluir de la validación.
+     * @return true si el teléfono existe y pertenece a otro usuario, false de lo contrario.
+     */
+    public boolean existsPhoneExcludeUser(String phone, String idUsuario) {
+        String sql = "SELECT COUNT(*) FROM usuario WHERE phone = ? AND id_usuario != ?";
+        try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, phone);
+            ps.setString(2, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error comprobando existencia del teléfono con exclusión: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
      * Restablece la contraseña de un usuario a partir de su correo electrónico.
      *
      * @param email Correo electrónico del usuario.
@@ -425,17 +470,18 @@ public class UsuarioDAO {
      * @param status Nuevo estado de la cuenta (Activo/Inactivo).
      * @return true si la actualización fue exitosa, false de lo contrario.
      */
-    public boolean actualizarEmpleado(String idUsuario, String name, String email, String role, String status) {
+    public boolean actualizarEmpleado(String idUsuario, String name, String email, String phone, String role, String status) {
         // Traducir el nombre amigable de rol a su correspondiente ID de base de datos
         String idRol = role.toLowerCase().contains("admin") ? "ROL-001" : "ROL-002";
         // Sentencia SQL de actualización parametrizada
-        String sql = "UPDATE usuario SET name = ?, email = ?, id_rol = ?, status = ? WHERE id_usuario = ?";
+        String sql = "UPDATE usuario SET name = ?, email = ?, phone = ?, id_rol = ?, status = ? WHERE id_usuario = ?";
         try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, name);
             ps.setString(2, email);
-            ps.setString(3, idRol);
-            ps.setString(4, status);
-            ps.setString(5, idUsuario);
+            ps.setString(3, phone);
+            ps.setString(4, idRol);
+            ps.setString(5, status);
+            ps.setString(6, idUsuario);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Error actualizando empleado en el DAO: " + e.getMessage());

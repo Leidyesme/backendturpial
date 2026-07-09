@@ -332,6 +332,14 @@ public class UsuarioServlet extends HttpServlet {
                     return;
                 }
 
+                // Validar unicidad del teléfono
+                if (usuarioDao.existsPhone(phone)) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "El teléfono tiene que ser único ya que ya está registrado");
+                    response.getWriter().print(jsonRespuesta.toString());
+                    return;
+                }
+
                 // 4. Traducir el rol seleccionado a su ID correspondiente en base de datos.
                 String idRol = role.toLowerCase().contains("admin") ? "ROL-001" : "ROL-002";
 
@@ -360,10 +368,19 @@ public class UsuarioServlet extends HttpServlet {
                 String idUsuario = jsonEntrada.getString("id");
                 String name = jsonEntrada.getString("name");
                 String email = jsonEntrada.getString("email");
+                String phone = jsonEntrada.optString("phone", "").trim();
                 String role = jsonEntrada.getString("role");
                 String status = jsonEntrada.getString("status");
 
-                boolean exito = usuarioDao.actualizarEmpleado(idUsuario, name, email, role, status);
+                // Validar unicidad del teléfono (excluyendo al usuario actual)
+                if (!phone.isEmpty() && usuarioDao.existsPhoneExcludeUser(phone, idUsuario)) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "El teléfono tiene que ser único ya que ya está registrado");
+                    response.getWriter().print(jsonRespuesta.toString());
+                    return;
+                }
+
+                boolean exito = usuarioDao.actualizarEmpleado(idUsuario, name, email, phone, role, status);
                 if (exito) {
                     jsonRespuesta.put("status", "success");
                     jsonRespuesta.put("message", "Empleado actualizado");
