@@ -307,24 +307,52 @@ public class UsuarioServlet extends HttpServlet {
             }
             else if ("createEmployee".equals(accion)) {
                 JSONObject jsonEntrada = new JSONObject(cuerpoPeticion);
-                String name = jsonEntrada.getString("name");
-                String email = jsonEntrada.getString("email");
-                String role = jsonEntrada.getString("role");
+                
+                // 1. Obtener y limpiar todos los datos obligatorios del empleado desde el JSON.
+                String name = jsonEntrada.optString("name", "").trim();
+                String email = jsonEntrada.optString("email", "").trim();
+                String phone = jsonEntrada.optString("phone", "").trim();
+                String direccion = jsonEntrada.optString("direccion", "").trim();
+                String password = jsonEntrada.optString("password", "").trim();
+                String role = jsonEntrada.optString("role", "").trim();
+                
+                // 2. Validar que ninguno de los campos obligatorios esté vacío.
+                if (name.isEmpty() || email.isEmpty() || phone.isEmpty() || direccion.isEmpty() || password.isEmpty() || role.isEmpty()) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "Todos los campos (nombre, correo, teléfono, dirección, contraseña y rol) son obligatorios.");
+                    response.getWriter().print(jsonRespuesta.toString());
+                    return;
+                }
+
+                // 3. Validar requisitos mínimos de seguridad para la contraseña.
+                if (password.length() < 6) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "La contraseña debe tener al menos 6 caracteres.");
+                    response.getWriter().print(jsonRespuesta.toString());
+                    return;
+                }
+
+                // 4. Traducir el rol seleccionado a su ID correspondiente en base de datos.
                 String idRol = role.toLowerCase().contains("admin") ? "ROL-001" : "ROL-002";
 
+                // 5. Instanciar y configurar el objeto Usuario con los datos validados.
                 Usuario u = new Usuario();
                 u.setName(name);
                 u.setEmail(email);
+                u.setPhone(phone);
+                u.setDireccion(direccion);
+                u.setPassword(password); // El DAO se encargará de hashearla antes de insertarla en la base de datos
                 u.setIdRol(idRol);
                 u.setEstado("Activo");
 
+                // 6. Intentar registrar el empleado en la base de datos a través del DAO.
                 boolean exito = usuarioDao.registrarEmpleado(u);
                 if (exito) {
                     jsonRespuesta.put("status", "success");
                     jsonRespuesta.put("message", "Empleado creado exitosamente");
                 } else {
                     jsonRespuesta.put("status", "error");
-                    jsonRespuesta.put("message", "No se pudo crear el empleado");
+                    jsonRespuesta.put("message", "No se pudo crear el empleado. Verifique si el correo ya está registrado.");
                 }
             }
             else if ("updateEmployee".equals(accion)) {

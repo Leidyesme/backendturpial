@@ -11,28 +11,22 @@ import java.util.List;
 
 /**
  * Clase de Acceso a Datos (DAO) para la entidad Auditoria.
- * Gestiona el registro y consulta de actividades críticas de los usuarios en la base de datos.
+ * Gestiona el registro y consulta de actividades críticas en la base de datos.
  */
 public class AuditoriaDAO {
 
-    /**
-     * Constructor por defecto del DAO de Auditoría.
-     */
     public AuditoriaDAO() {
     }
 
     /**
      * Registra un nuevo evento de actividad en el log de auditoría.
      * Genera automáticamente un identificador correlativo con formato 'AUD-XXX'.
-     *
-     * @param aud Objeto Auditoria con la información a insertar (idUsuario, accion, tipoAccion).
-     * @return true si el registro fue exitoso, false en caso contrario.
      */
     public boolean registrarActividad(Auditoria aud) {
         String queryMaxId = "SELECT id_historial FROM Auditoria ORDER BY CAST(SUBSTRING(id_historial, 5) AS UNSIGNED) DESC LIMIT 1";
         String nextId = "AUD-001";
 
-        // Obtener el último ID registrado para calcular el consecutivo
+        // Obtención del último ID para cálculo del consecutivo
         try (Connection con = Conexion.getConnection();
              PreparedStatement psMax = con.prepareStatement(queryMaxId);
              ResultSet rsMax = psMax.executeQuery()) {
@@ -72,10 +66,8 @@ public class AuditoriaDAO {
     }
 
     /**
-     * Recupera el listado completo de auditoría o registros de actividad de un usuario específico.
-     *
-     * @param idUsuario Identificador del usuario a consultar.
-     * @return Lista de objetos Auditoria ordenados de más reciente a más antiguo.
+     * Recupera el listado de registros de actividad de un usuario específico.
+     * Ordenados de más reciente a más antiguo.
      */
     public List<Auditoria> listarPorUsuario(String idUsuario) {
         List<Auditoria> lista = new ArrayList<>();

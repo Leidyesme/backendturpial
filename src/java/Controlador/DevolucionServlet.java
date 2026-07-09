@@ -23,28 +23,26 @@ import org.json.JSONObject;
 @WebServlet("/devolucion")
 public class DevolucionServlet extends HttpServlet {
 
+    // Instancia del DAO para interactuar con la tabla de devoluciones en MySQL.
     private final DevolucionDAO dao = new DevolucionDAO();
 
     /**
      * Procesa solicitudes POST para registrar o listar solicitudes de devolución.
-     *
-     * @param request Petición del cliente conteniendo el parámetro de acción y el cuerpo JSON.
-     * @param response Respuesta JSON enviada al cliente.
-     * @throws ServletException si ocurre un error específico del servlet.
-     * @throws IOException si ocurre un error de E/S.
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        // Establece el formato de respuesta como JSON para el frontend.
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         PrintWriter out = response.getWriter();
 
+        // Identifica la acción solicitada por el usuario (solicitar, listar, listarTodas, responder).
         String accion = request.getParameter("accion");
         JSONObject jsonRespuesta = new JSONObject();
 
         try {
-            // Leer cuerpo del request
+            // Lectura del cuerpo de la petición (JSON) enviado por el cliente.
             StringBuilder sb = new StringBuilder();
             String line;
             try (BufferedReader reader = request.getReader()) {
@@ -54,6 +52,7 @@ public class DevolucionServlet extends HttpServlet {
             }
             String body = sb.toString();
 
+            // CASO: SOLICITAR DEVOLUCIÓN
             if ("solicitar".equals(accion)) {
                 if (body.trim().isEmpty()) {
                     jsonRespuesta.put("status", "error");
@@ -67,9 +66,7 @@ public class DevolucionServlet extends HttpServlet {
                 String motivo = jsonEntrada.getString("motivo");
                 String idUsuario = jsonEntrada.optString("idUsuario", null);
 
-                // CONTROL DE ACCESO BASADO EN ROLES (RBAC):
-                // Justificación de negocio: Únicamente los usuarios con rol de Cliente ("ROL-003") pueden
-                // iniciar solicitudes de devolución. Empleados y administradores no tienen permitida esta opción.
+                // CONTROL DE ACCESO (RBAC): Valida que solo clientes (ROL-003) puedan solicitar devoluciones.
                 if (idUsuario != null && !idUsuario.isEmpty()) {
                     UsuarioDAO usuarioDao = new UsuarioDAO();
                     Usuario user = usuarioDao.obtenerUsuarioPorId(idUsuario);
@@ -81,6 +78,7 @@ public class DevolucionServlet extends HttpServlet {
                     }
                 }
 
+                // Crea la entidad y llama al DAO para registrarla.
                 Devolucion dev = new Devolucion();
                 dev.setIdPedido(idPedido);
                 dev.setMotivo(motivo);
@@ -94,6 +92,7 @@ public class DevolucionServlet extends HttpServlet {
                     jsonRespuesta.put("message", "No se pudo registrar la solicitud de devolución");
                 }
             } 
+            // CASO: LISTAR DEVOLUCIONES DE UN CLIENTE
             else if ("listar".equals(accion)) {
                 String idUsuario = null;
                 if (!body.trim().isEmpty()) {
@@ -111,9 +110,7 @@ public class DevolucionServlet extends HttpServlet {
                     return;
                 }
 
-                // CONTROL DE ACCESO / LÓGICA DE NEGOCIO:
-                // Cada usuario con rol de Cliente puede ver el estado y respuesta de las devoluciones que él mismo creó.
-                // Mapeamos respuesta_admin en el JSON de salida para que sea visible en el panel del cliente.
+                // Llama al DAO para obtener las devoluciones específicas del usuario.
                 List<Devolucion> lista = dao.listarPorUsuario(idUsuario);
                 JSONArray jsonArray = new JSONArray();
                 for (Devolucion dev : lista) {
@@ -130,10 +127,8 @@ public class DevolucionServlet extends HttpServlet {
                 jsonRespuesta.put("status", "success");
                 jsonRespuesta.put("returns", jsonArray);
             } 
+            // CASO: LISTAR TODAS LAS DEVOLUCIONES (SOLO ADMINS)
             else if ("listarTodas".equals(accion)) {
-                // CONTROL DE ACCESO BASADO EN ROLES (RBAC):
-                // Justificación de negocio: Únicamente los administradores ("ROL-001") tienen permiso
-                // de auditar y ver el listado general de devoluciones del sistema.
                 String idUsuario = null;
                 if (!body.trim().isEmpty()) {
                     JSONObject jsonEntrada = new JSONObject(body);
@@ -143,6 +138,7 @@ public class DevolucionServlet extends HttpServlet {
                     idUsuario = request.getParameter("idUsuario");
                 }
 
+                // CONTROL DE ACCESO (RBAC): Valida rol de administrador (ROL-001).
                 if (idUsuario != null && !idUsuario.isEmpty()) {
                     UsuarioDAO usuarioDao = new UsuarioDAO();
                     Usuario user = usuarioDao.obtenerUsuarioPorId(idUsuario);
@@ -175,10 +171,8 @@ public class DevolucionServlet extends HttpServlet {
                 jsonRespuesta.put("status", "success");
                 jsonRespuesta.put("returns", jsonArray);
             } 
+            // CASO: RESPONDER / PROCESAR DEVOLUCIÓN (ADMINS)
             else if ("responder".equals(accion)) {
-                // CONTROL DE ACCESO BASADO EN ROLES (RBAC):
-                // Justificación de negocio: Únicamente los administradores ("ROL-001") tienen permitido
-                // resolver/responder a las devoluciones hechas por los clientes.
                 if (body.trim().isEmpty()) {
                     jsonRespuesta.put("status", "error");
                     jsonRespuesta.put("message", "Cuerpo JSON vacío");
@@ -192,6 +186,7 @@ public class DevolucionServlet extends HttpServlet {
                 String estado = jsonEntrada.getString("estado"); // 'Aprobada' o 'Rechazada'
                 String respuestaAdmin = jsonEntrada.getString("respuestaAdmin");
 
+                // CONTROL DE ACCESO (RBAC): Valida rol de administrador.
                 UsuarioDAO usuarioDao = new UsuarioDAO();
                 Usuario user = usuarioDao.obtenerUsuarioPorId(idUsuario);
                 if (user == null || !"ROL-001".equals(user.getIdRol())) {
@@ -224,18 +219,12 @@ public class DevolucionServlet extends HttpServlet {
         out.flush();
     }
 
-    /**
-     * Responde a peticiones preflight OPTIONS para CORS.
-     */
     @Override
     protected void doOptions(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setStatus(HttpServletResponse.SC_OK);
     }
 
-    /**
-     * Permite soportar consultas GET en caso de integración directa.
-     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

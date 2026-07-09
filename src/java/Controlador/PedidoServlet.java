@@ -227,6 +227,29 @@ public class PedidoServlet extends HttpServlet {
 
             System.out.println("[INFO - PedidoServlet] doPut recibido: idPedido=" + idPedido + ", estado=" + nuevoEstado);
 
+            // 1. Obtener la información completa del pedido desde la base de datos antes de proceder.
+            JSONObject pedidoExistente = dao.obtenerPedidoConProductos(idPedido);
+            if (pedidoExistente == null) {
+                // 2. Si el pedido no se encuentra registrado en el sistema, retornar una respuesta de error.
+                jsonRespuesta.put("status", "error");
+                jsonRespuesta.put("message", "El pedido no fue encontrado.");
+                response.getWriter().print(jsonRespuesta.toString());
+                return;
+            }
+
+            // 3. Extraer el estado actual del pedido guardado en la base de datos.
+            String estadoActual = pedidoExistente.getString("estado");
+
+            // 4. Validar si el pedido ya está en estado "Entregado", el cual es un estado final irreversible.
+            if ("Entregado".equalsIgnoreCase(estadoActual)) {
+                // 5. Bloquear cualquier intento de modificar un estado final e informar del error al cliente.
+                jsonRespuesta.put("status", "error");
+                jsonRespuesta.put("message", "No se puede cambiar el estado de un pedido que ya ha sido entregado.");
+                response.getWriter().print(jsonRespuesta.toString());
+                return;
+            }
+
+            // 6. Si el pedido no se encuentra en estado final, proceder con la actualización del estado.
             boolean actualizado = dao.actualizarEstado(idPedido, nuevoEstado);
             if (actualizado) {
                 jsonRespuesta.put("status", "success");

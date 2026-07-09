@@ -86,8 +86,8 @@ public class UsuarioDAO {
      * @return true si el registro fue exitoso, false en caso contrario.
      */
     public boolean registrar(Usuario u) {
-        // Consulta SQL para obtener el último ID de usuario registrado
-        String queryMaxId = "SELECT id_usuario FROM usuario ORDER BY id_usuario DESC LIMIT 1";
+        // Consulta SQL para obtener el último ID de usuario registrado ordenando numéricamente para evitar colisiones
+        String queryMaxId = "SELECT id_usuario FROM usuario ORDER BY CAST(SUBSTRING(id_usuario, 5) AS UNSIGNED) DESC LIMIT 1";
         // Identificador por defecto si la tabla no contiene registros
         String nextId = "USR-001";
         
@@ -116,15 +116,9 @@ public class UsuarioDAO {
         // Asignar el nuevo ID generado al objeto de usuario
         u.setIdUsuario(nextId);
 
-        // Autogenerar teléfono único si viene vacío o por defecto para evitar error de duplicados
-        if (u.getPhone() == null || u.getPhone().trim().isEmpty() || "0000000000".equals(u.getPhone())) {
-            String numericPart = nextId.replaceAll("[^0-9]", "");
-            u.setPhone("3000000" + numericPart);
-        }
-
-        // Autogenerar dirección si viene vacía para cumplir restricciones de base de datos
-        if (u.getDireccion() == null || u.getDireccion().trim().isEmpty()) {
-            u.setDireccion("Calle Empleado " + nextId);
+        // Hashear la contraseña usando SHA-256 antes de insertarla para mayor seguridad
+        if (u.getPassword() != null) {
+            u.setPassword(Modelo.Config.SecurityUtils.hashPassword(u.getPassword()));
         }
 
         // Consulta SQL parametrizada para realizar la inserción
@@ -165,14 +159,18 @@ public class UsuarioDAO {
      * @return El objeto Usuario correspondiente si las credenciales son válidas, null de lo contrario.
      */
     public Usuario login(String email, String password) {
-        // Consulta SQL para buscar coincidencia de correo y contraseña
-        String sql = "SELECT * FROM usuario WHERE email = ? AND password = ?";
+        // Hashear la contraseña ingresada para la comparación segura
+        String hashedPassword = Modelo.Config.SecurityUtils.hashPassword(password);
+        
+        // Consulta SQL para buscar coincidencia de correo y contraseña (ya sea hasheada o texto plano para legacy)
+        String sql = "SELECT * FROM usuario WHERE email = ? AND (password = ? OR password = ?)";
 
         try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
 
             // Asignar los valores a los parámetros del query
             ps.setString(1, email);
-            ps.setString(2, password);
+            ps.setString(2, hashedPassword);
+            ps.setString(3, password);
 
             // Ejecutar consulta de selección
             try (ResultSet rs = ps.executeQuery()) {
@@ -234,8 +232,11 @@ public class UsuarioDAO {
      * @return true si la contraseña se actualizó correctamente, false si la contraseña actual es incorrecta o falló.
      */
     public boolean cambiarPassword(String idUsuario, String currentPassword, String newPassword) {
-        // Consulta para verificar la contraseña actual
-        String verificarSql = "SELECT * FROM usuario WHERE id_usuario = ? AND password = ?";
+        String hashedCurrent = Modelo.Config.SecurityUtils.hashPassword(currentPassword);
+        String hashedNew = Modelo.Config.SecurityUtils.hashPassword(newPassword);
+
+        // Consulta para verificar la contraseña actual (admite texto plano temporalmente por compatibilidad)
+        String verificarSql = "SELECT * FROM usuario WHERE id_usuario = ? AND (password = ? OR password = ?)";
         // Sentencia para actualizar a la nueva contraseña
         String updateSql = "UPDATE usuario SET password = ? WHERE id_usuario = ?";
 
@@ -244,7 +245,8 @@ public class UsuarioDAO {
             // Ejecutar la verificación inicial
             try (PreparedStatement verificarPs = con.prepareStatement(verificarSql)) {
                 verificarPs.setString(1, idUsuario);
-                verificarPs.setString(2, currentPassword);
+                verificarPs.setString(2, hashedCurrent);
+                verificarPs.setString(3, currentPassword);
                 try (ResultSet rs = verificarPs.executeQuery()) {
                     // Si no coincide la contraseña actual, abortar el proceso retornando falso
                     if (!rs.next()) {
@@ -255,7 +257,7 @@ public class UsuarioDAO {
 
             // Ejecutar la actualización de la contraseña
             try (PreparedStatement updatePs = con.prepareStatement(updateSql)) {
-                updatePs.setString(1, newPassword);
+                updatePs.setString(1, hashedNew);
                 updatePs.setString(2, idUsuario);
                 return updatePs.executeUpdate() > 0;
             }
@@ -330,10 +332,11 @@ public class UsuarioDAO {
      * @return true si se restableció exitosamente, false de lo contrario.
      */
     public boolean resetPassword(String email, String newPassword) {
+        String hashedNew = Modelo.Config.SecurityUtils.hashPassword(newPassword);
         // Sentencia SQL parametrizada de actualización de contraseña por correo
         String sql = "UPDATE usuario SET password = ? WHERE email = ?";
         try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, newPassword);
+            ps.setString(1, hashedNew);
             ps.setString(2, email);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {

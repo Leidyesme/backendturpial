@@ -38,81 +38,71 @@ public class PedidoDAO {
      * @return Una lista de objetos de tipo Pedido.
      */
     public List<Pedido> listar() {
-        // Crea el contenedor vacío para los resultados.
+        // Crea el contenedor (lista) que albergará los objetos Pedido obtenidos de la base de datos.
         List<Pedido> lista = new ArrayList<>();
         
-        // Consulta SQL con LEFT JOIN para obtener el nombre real del usuario registrado
+        // Define la consulta SQL. Usa un LEFT JOIN para traer los datos del pedido y, 
+        // si existe, el nombre del usuario asociado (sin descartar pedidos sin usuario).
         String sql = "SELECT p.*, u.name AS user_name FROM pedido p "
-                   + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario";
+                    + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario";
 
-        // Intenta conectar y ejecutar la consulta.
-        // Usar try-with-resources para asegurar el cierre automático de la conexión, sentencia y conjunto de resultados
+        // Establece la conexión y ejecuta la consulta. El try-with-resources asegura que 
+        // la conexión, el statement y el resultado se cierren al terminar el bloque.
         try (
             Connection con = Conexion.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
             ResultSet rs = ps.executeQuery()
         ) {
-            // Recorrer el conjunto de resultados fila por fila
-            // Mientras haya filas en el resultado...
+            // Itera sobre cada registro (fila) devuelto por la base de datos.
             while (rs.next()) {
-                // Instanciar un nuevo objeto Pedido para mapear la fila actual
+                // Instancia un nuevo objeto Pedido para mapear los datos de la fila actual.
                 Pedido p = new Pedido();
 
-                // Mapeo de columnas: Transfiere el valor de cada celda al atributo del objeto.
+                // Transfiere el valor de la columna 'id_pedido' al objeto Pedido.
                 p.setIdPedido(rs.getString("id_pedido"));
 
-                // Mapear la columna id_usuario (puede ser nulo si no está registrado)
+                // Transfiere el 'id_usuario' al objeto (puede ser nulo en caso de ser un invitado).
                 p.setIdUsuario(rs.getString("id_usuario"));
 
-                // Mapear el nombre del cliente obteniendo el nombre real de usuario como fallback
-                // Si el nombre del cliente está vacío, usa el nombre que viene de la tabla usuario
+                // Lógica de respaldo: si 'customer_name' está vacío, toma el nombre de 'usuario' (u.name).
                 String clientName = rs.getString("customer_name");
                 if (clientName == null || clientName.trim().isEmpty()) {
                     clientName = rs.getString("user_name");
                 }
+                // Asigna un valor por defecto si el cliente no está registrado.
                 p.setNombreClienteOpcional(clientName != null ? clientName : "Cliente Anónimo");
 
-                // Mapear el tipo de entrega (enum de base de datos)
+                // Mapea el tipo de entrega (p.ej. 'Local' o 'Domicilio').
                 p.setTipoEntrega(rs.getString("tipo_entrega"));
 
-                // Recuperar el número de mesa como entero básico
+                // Obtiene el número de mesa (tipo primitivo).
                 int numeroMesa = rs.getInt("numero_mesa");
 
-                // Validar si el valor obtenido de la base de datos es NULL en SQL
+                // Verifica si el valor en la base de datos fue NULL, para no asignar 0 erróneamente.
                 if (rs.wasNull()) {
-                    // Si era null, asignar null a la propiedad Integer del objeto
                     p.setNumeroMesa(null);
                 } else {
-                    // En caso contrario, asignar el valor numérico recuperado
                     p.setNumeroMesa(numeroMesa);
                 }
 
-                // Mapear la dirección de entrega
+                // Asigna los campos restantes del pedido desde la consulta SQL.
                 p.setDireccionEntrega(rs.getString("direccion_entrega"));
-
-                // Mapear las observaciones adicionales
                 p.setObservaciones(rs.getString("observaciones"));
-
-                // Mapear el monto total
                 p.setTotal(rs.getDouble("total"));
-
-                // Mapear el estado del pedido
                 p.setEstado(rs.getString("estado"));
-
-                // Mapear la fecha y hora de creación del pedido
                 p.setFechaPedido(rs.getString("fecha_pedido"));
 
-                // Agregar el objeto mapeado a la lista de retorno
+                // Añade el objeto completamente mapeado a la lista de retorno.
                 lista.add(p);
             }
 
         } catch (SQLException e) {
-            // Manejar y reportar excepciones de base de datos en consola
+            // Captura cualquier error de conexión o consulta SQL y lo registra en la consola.
             System.err.println("ERROR SQL AL LISTAR PEDIDOS: " + e.getMessage());
             e.printStackTrace();
         }
 
-        // Retornar la lista resultante
+        // Devuelve la lista completa al componente que invocó a este método (usualmente el Servlet).
         return lista;
     }
 
@@ -124,40 +114,34 @@ public class PedidoDAO {
      * @return true si el registro fue exitoso, false en caso contrario.
      */
     public boolean registrar(Pedido p, JSONArray productos) {
-        // Consulta SQL para buscar el último ID de pedido registrado ordenado numéricamente
+        // SQL: busca el ID más alto, lo convierte a número después de 'PED-' para ordenarlos numéricamente.
         String queryMaxId = "SELECT id_pedido FROM pedido ORDER BY CAST(SUBSTRING(id_pedido, 5) AS UNSIGNED) DESC LIMIT 1";
         
-        // Identificador por defecto si la tabla está completamente vacía
+        // Identificador por defecto para cuando no existen pedidos previos.
         String nextId = "PED-001";
 
-        // Obtener la conexión y buscar el último ID registrado para calcular el siguiente
+        // Bloque para calcular automáticamente el siguiente número correlativo de ID.
         try (
             Connection con = Conexion.getConnection();
             PreparedStatement psMax = con.prepareStatement(queryMaxId);
             ResultSet rsMax = psMax.executeQuery()
         ) {
-            // Si existe al menos un registro en la tabla
             if (rsMax.next()) {
-                // Recuperar el identificador del pedido
                 String maxId = rsMax.getString("id_pedido");
-
-                // Validar que el ID no sea nulo y cumpla el formato esperado 'PED-'
+                // Valida formato y extrae el número para sumarle 1.
                 if (maxId != null && maxId.startsWith("PED-")) {
-                    // Extraer la parte numérica del ID, parsearla e incrementarla en 1
                     int num = Integer.parseInt(maxId.substring(4));
-                    // Formatear el nuevo ID completando con ceros a la izquierda
                     nextId = String.format("PED-%03d", num + 1);
                 }
             }
         } catch (SQLException e) {
-            // Registrar advertencia si falla el cálculo del ID, pero continuar usando el ID por defecto
             System.err.println("Advertencia obteniendo ID máximo de pedido (se usará PED-001): " + e.getMessage());
         }
 
-        // Asignar el identificador incremental al objeto pedido
+        // Asigna el nuevo ID generado al objeto pedido antes de insertar.
         p.setIdPedido(nextId);
 
-        // Obtener el consecutivo del detalle de pedido ordenado numéricamente
+        // Bloque similar para obtener el siguiente ID de la tabla 'detallepedido'.
         String queryMaxDetalleId = "SELECT id_detallepedido FROM detallepedido ORDER BY CAST(SUBSTRING(id_detallepedido, 5) AS UNSIGNED) DESC LIMIT 1";
         int lastDetalleNum = 0;
         try (
@@ -175,58 +159,44 @@ public class PedidoDAO {
             System.err.println("Advertencia obteniendo ID máximo de detalle: " + e.getMessage());
         }
 
-        // Sentencia SQL parametrizada para insertar la información del pedido
+        // Define las sentencias SQL de inserción para la cabecera y el detalle del pedido.
         String sql = "INSERT INTO pedido "
-                  + "(id_pedido, id_usuario, customer_name, tipo_entrega, numero_mesa, direccion_entrega, observaciones, total, estado, fecha_pedido) "
-                  + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                     + "(id_pedido, id_usuario, customer_name, tipo_entrega, numero_mesa, direccion_entrega, observaciones, total, estado, fecha_pedido) "
+                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         String sqlDetalle = "INSERT INTO detallepedido (id_detallepedido, id_pedido, id_producto, cantidad, precio_unitario) VALUES (?, ?, ?, ?, ?)";
 
-        // Usar try-with-resources para ejecutar de forma segura la inserción en la BD
+        // Inicio de la transacción: crucial para asegurar que el pedido y sus detalles se guarden como una unidad.
         try (Connection con = Conexion.getConnection()) {
-            con.setAutoCommit(false); // Transaccionalidad   MYSQL no aguarda nada permanentet hasta que se le diga commit
+            con.setAutoCommit(false); // Desactiva el autoguardado (transaccionalidad manual).
 
             try (PreparedStatement ps = con.prepareStatement(sql)) {
-                // Asignar el ID de pedido al parámetro 1
+                // Mapea los valores del objeto Pedido a la consulta principal.
                 ps.setString(1, p.getIdPedido());
-
-                // Asignar el ID de usuario (puede ser null para clientes no registrados)
                 ps.setString(2, p.getIdUsuario());
-
-                // Asignar el nombre del cliente
                 ps.setString(3, p.getNombreClienteOpcional());
-
-                // Asignar el tipo de entrega
                 ps.setString(4, p.getTipoEntrega());
 
-                // Validar si el número de mesa es null
+                // Manejo de campo opcional 'numero_mesa'.
                 if (p.getNumeroMesa() != null) {
-                    // Asignar el número de mesa al parámetro 5 si está definido
                     ps.setInt(5, p.getNumeroMesa());
                 } else {
-                    // Asignar tipo NULL de base de datos al parámetro 5 si es nulo
                     ps.setNull(5, java.sql.Types.INTEGER);
                 }
 
-                // Asignar la dirección de entrega
                 ps.setString(6, p.getDireccionEntrega());
-
-                // Asignar observaciones adicionales
                 ps.setString(7, p.getObservaciones());
-
-                // Asignar el monto total
                 ps.setDouble(8, p.getTotal());
-
-                // Asignar el estado del pedido
                 ps.setString(9, p.getEstado());
 
+                // Ejecuta la inserción de la cabecera.
                 int affectedRows = ps.executeUpdate();
                 if (affectedRows == 0) {
-                    con.rollback();
+                    con.rollback(); // Si falla, revierte todo.
                     return false;
                 }
 
-                // Insertar detalles del pedido
+                // Inserción de los productos (detalles) en un lote (batch) para mayor rendimiento.
                 if (productos != null && productos.length() > 0) {
                     try (PreparedStatement psD = con.prepareStatement(sqlDetalle)) {
                         for (int i = 0; i < productos.length(); i++) {
@@ -239,28 +209,26 @@ public class PedidoDAO {
                             psD.setString(3, prod.getString("idProducto"));
                             psD.setInt(4, prod.getInt("quantity"));
                             psD.setDouble(5, prod.getDouble("price"));
-                            psD.addBatch();
+                            psD.addBatch(); // Acumula las sentencias.
                         }
-                        psD.executeBatch();
+                        psD.executeBatch(); // Ejecuta todas las inserciones a la vez.
                     }
                 }
 
-                con.commit();
+                con.commit(); // Si todo es correcto, confirma (graba) los cambios.
                 return true;
             } catch (SQLException e) {
-                con.rollback();
+                con.rollback(); // Si ocurre un error, deshace cualquier cambio previo.
                 throw e;
             } finally {
-                con.setAutoCommit(true);
+                con.setAutoCommit(true); // Restaura el modo de guardado automático.
             }
         } catch (SQLException e) {
-            // Registrar error en caso de fallo durante la inserción
             System.err.println("ERROR SQL AL REGISTRAR PEDIDO: " + e.getMessage());
             e.printStackTrace();
         }
 
-        // Retornar falso si ocurrió algún error y la inserción falló
-        return false;
+        return false; // Error general.
     }
 
     /**
@@ -271,6 +239,7 @@ public class PedidoDAO {
      * @return true si la actualización afectó al menos una fila, false de lo contrario.
      */
     public boolean actualizarEstado(String idPedido, String nuevoEstado) {
+        // Actualiza solo la columna 'estado' donde coincida el ID.
         String sql = "UPDATE pedido SET estado = ? WHERE id_pedido = ?";
         try (
             Connection con = Conexion.getConnection();
@@ -278,6 +247,7 @@ public class PedidoDAO {
         ) {
             ps.setString(1, nuevoEstado);
             ps.setString(2, idPedido);
+            // Si la consulta afecta más de 0 filas, fue exitosa.
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("ERROR SQL AL ACTUALIZAR ESTADO DE PEDIDO: " + e.getMessage());
@@ -285,6 +255,7 @@ public class PedidoDAO {
         }
         return false;
     }
+
     /**
      * Obtiene un pedido completo de la base de datos (cabecera y lista de productos de detalle).
      *
@@ -294,10 +265,10 @@ public class PedidoDAO {
     public org.json.JSONObject obtenerPedidoConProductos(String idPedido) {
         org.json.JSONObject res = new org.json.JSONObject();
         
-        // 1. Obtener la cabecera del pedido
+        // Obtener la cabecera del pedido mediante un LEFT JOIN para obtener el nombre del usuario.
         String sqlPedido = "SELECT p.*, u.name AS user_name FROM pedido p "
-                         + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario "
-                         + "WHERE p.id_pedido = ?";
+                          + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario "
+                          + "WHERE p.id_pedido = ?";
         
         try (
             Connection con = Conexion.getConnection();
@@ -306,6 +277,7 @@ public class PedidoDAO {
             ps.setString(1, idPedido);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
+                    // Carga todos los campos del pedido en un objeto JSON para enviar al frontend.
                     res.put("idPedido", rs.getString("id_pedido"));
                     res.put("idUsuario", rs.getString("id_usuario") != null ? rs.getString("id_usuario") : "");
                     
@@ -329,7 +301,7 @@ public class PedidoDAO {
                     res.put("estado", rs.getString("estado"));
                     res.put("fechaPedido", rs.getString("fecha_pedido"));
                 } else {
-                    return null;
+                    return null; // El pedido no existe.
                 }
             }
         } catch (SQLException e) {
@@ -338,12 +310,13 @@ public class PedidoDAO {
             return null;
         }
 
-        // 2. Obtener la lista de productos asociados
+        // Obtener la lista de productos asociados al pedido usando un JOIN con 'producto'.
         String sqlDetalles = "SELECT dp.*, prod.nombre AS producto_nombre FROM detallepedido dp "
                            + "JOIN producto prod ON dp.id_producto = prod.id_producto "
                            + "WHERE dp.id_pedido = ?";
         
         org.json.JSONArray arrayProductos = new org.json.JSONArray();
+        // Ejecuta la consulta para los detalles asociados al idPedido.
         try (
             Connection con = Conexion.getConnection();
             PreparedStatement ps = con.prepareStatement(sqlDetalles)
@@ -351,17 +324,19 @@ public class PedidoDAO {
             ps.setString(1, idPedido);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    // Crea un objeto para cada producto y lo agrega a la lista de productos.
                     org.json.JSONObject prod = new org.json.JSONObject();
                     prod.put("name", rs.getString("producto_nombre"));
                     prod.put("quantity", rs.getInt("cantidad"));
                     prod.put("price", rs.getDouble("precio_unitario"));
-                    arrayProductos.put(prod);
+                    arrayProductos.put(prod);  // Agrega cada producto al arreglo
                 }
             }
         } catch (SQLException e) {
             System.err.println("ERROR SQL AL OBTENER DETALLES EN PedidoDAO: " + e.getMessage());
             e.printStackTrace();
         }
+        // Inyecta el arreglo de productos dentro del objeto JSON principal y lo retorna.
         res.put("products", arrayProductos);
         return res;
     }

@@ -21,28 +21,26 @@ import org.json.JSONObject;
 @WebServlet("/auditoria")
 public class AuditoriaServlet extends HttpServlet {
 
+    // Instancia del DAO para acceder a los métodos de base de datos.
     private final AuditoriaDAO dao = new AuditoriaDAO();
 
     /**
      * Procesa solicitudes POST para registrar o listar registros de auditoría.
-     *
-     * @param request Petición del cliente conteniendo el parámetro de acción y el cuerpo JSON.
-     * @param response Respuesta JSON enviada al cliente.
-     * @throws ServletException si ocurre un error específico del servlet.
-     * @throws IOException si ocurre un error de E/S.
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        // Configura la respuesta como JSON para que el frontend pueda procesarla fácilmente.
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         PrintWriter out = response.getWriter();
 
+        // Obtiene el parámetro de acción (ej: 'listar' o 'registrar') desde la URL.
         String accion = request.getParameter("accion");
         JSONObject jsonRespuesta = new JSONObject();
 
         try {
-            // Leer cuerpo del request
+            // Lectura del cuerpo de la petición (JSON crudo) enviado desde el frontend.
             StringBuilder sb = new StringBuilder();
             String line;
             try (BufferedReader reader = request.getReader()) {
@@ -52,8 +50,10 @@ public class AuditoriaServlet extends HttpServlet {
             }
             String body = sb.toString();
 
+            // LÓGICA DE LISTADO: Recupera el historial de actividades de un usuario.
             if ("listar".equals(accion)) {
                 String idUsuario = null;
+                // Intenta obtener idUsuario desde el JSON del cuerpo o desde un parámetro URL.
                 if (!body.trim().isEmpty()) {
                     JSONObject jsonEntrada = new JSONObject(body);
                     idUsuario = jsonEntrada.optString("idUsuario", null);
@@ -62,6 +62,7 @@ public class AuditoriaServlet extends HttpServlet {
                     idUsuario = request.getParameter("idUsuario");
                 }
 
+                // Validación: si no hay ID, no podemos listar nada.
                 if (idUsuario == null || idUsuario.isEmpty()) {
                     jsonRespuesta.put("status", "error");
                     jsonRespuesta.put("message", "Se requiere el parámetro 'idUsuario'");
@@ -69,8 +70,10 @@ public class AuditoriaServlet extends HttpServlet {
                     return;
                 }
 
+                // Llama al DAO para obtener la lista de la base de datos.
                 List<Auditoria> lista = dao.listarPorUsuario(idUsuario);
                 JSONArray jsonArray = new JSONArray();
+                // Convierte la lista de objetos Java a un JSONArray para el frontend.
                 for (Auditoria aud : lista) {
                     JSONObject item = new JSONObject();
                     item.put("idHistorial", aud.getIdHistorial());
@@ -84,6 +87,7 @@ public class AuditoriaServlet extends HttpServlet {
                 jsonRespuesta.put("status", "success");
                 jsonRespuesta.put("activities", jsonArray);
             } 
+            // LÓGICA DE REGISTRO: Guarda una nueva actividad en el historial.
             else if ("registrar".equals(accion)) {
                 if (body.trim().isEmpty()) {
                     jsonRespuesta.put("status", "error");
@@ -92,16 +96,19 @@ public class AuditoriaServlet extends HttpServlet {
                     return;
                 }
 
+                // Extrae los datos del JSON recibido.
                 JSONObject jsonEntrada = new JSONObject(body);
                 String idUsuario = jsonEntrada.getString("idUsuario");
                 String descripcion = jsonEntrada.getString("accion");
                 String tipoAccion = jsonEntrada.getString("tipoAccion");
 
+                // Crea la entidad intermedia para enviarla al DAO.
                 Auditoria aud = new Auditoria();
                 aud.setIdUsuario(idUsuario);
                 aud.setAccion(descripcion);
                 aud.setTipoAccion(tipoAccion);
 
+                // Ejecuta la inserción en base de datos.
                 boolean registrado = dao.registrarActividad(aud);
                 if (registrado) {
                     jsonRespuesta.put("status", "success");
@@ -112,21 +119,24 @@ public class AuditoriaServlet extends HttpServlet {
                 }
             } 
             else {
+                // Manejo de acciones no definidas.
                 jsonRespuesta.put("status", "error");
                 jsonRespuesta.put("message", "Acción no reconocida");
             }
         } catch (Exception e) {
+            // Manejo de errores internos (ej: JSON mal formado).
             e.printStackTrace();
             jsonRespuesta.put("status", "error");
             jsonRespuesta.put("message", "Error interno: " + e.getMessage());
         }
 
+        // Envía el JSON final de respuesta al cliente.
         out.print(jsonRespuesta.toString());
         out.flush();
     }
 
     /**
-     * Responde a peticiones preflight OPTIONS para CORS.
+     * Responde a peticiones preflight OPTIONS (necesario para CORS).
      */
     @Override
     protected void doOptions(HttpServletRequest request, HttpServletResponse response)
@@ -135,7 +145,7 @@ public class AuditoriaServlet extends HttpServlet {
     }
 
     /**
-     * Permite soportar listado directo a través de GET para fines de depuración o integración simple.
+     * Soporta GET para simplificar pruebas de integración o depuración.
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
