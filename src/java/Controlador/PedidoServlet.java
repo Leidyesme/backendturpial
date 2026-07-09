@@ -224,8 +224,9 @@ public class PedidoServlet extends HttpServlet {
             JSONObject json = new JSONObject(body);
             String idPedido = json.getString("idPedido");
             String nuevoEstado = json.getString("status");
+            String idUsuario = json.optString("idUsuario", null);
 
-            System.out.println("[INFO - PedidoServlet] doPut recibido: idPedido=" + idPedido + ", estado=" + nuevoEstado);
+            System.out.println("[INFO - PedidoServlet] doPut recibido: idPedido=" + idPedido + ", estado=" + nuevoEstado + ", idUsuario=" + idUsuario);
 
             // 1. Obtener la información completa del pedido desde la base de datos antes de proceder.
             JSONObject pedidoExistente = dao.obtenerPedidoConProductos(idPedido);
@@ -235,6 +236,11 @@ public class PedidoServlet extends HttpServlet {
                 jsonRespuesta.put("message", "El pedido no fue encontrado.");
                 response.getWriter().print(jsonRespuesta.toString());
                 return;
+            }
+
+            // Fallback para idUsuario si es nulo o vacío
+            if (idUsuario == null || idUsuario.trim().isEmpty() || idUsuario.equalsIgnoreCase("null")) {
+                idUsuario = pedidoExistente.optString("idUsuario", "USR-001");
             }
 
             // 3. Extraer el estado actual del pedido guardado en la base de datos.
@@ -250,7 +256,7 @@ public class PedidoServlet extends HttpServlet {
             }
 
             // 6. Si el pedido no se encuentra en estado final, proceder con la actualización del estado.
-            boolean actualizado = dao.actualizarEstado(idPedido, nuevoEstado);
+            boolean actualizado = dao.actualizarEstado(idPedido, nuevoEstado, idUsuario);
             if (actualizado) {
                 jsonRespuesta.put("status", "success");
                 jsonRespuesta.put("message", "Estado del pedido actualizado exitosamente en MySQL");

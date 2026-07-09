@@ -196,7 +196,7 @@ public class DevolucionServlet extends HttpServlet {
                     return;
                 }
 
-                boolean procesado = dao.procesarDevolucion(idDevolucion, estado, respuestaAdmin);
+                boolean procesado = dao.procesarDevolucion(idDevolucion, estado, respuestaAdmin, idUsuario);
                 if (procesado) {
                     jsonRespuesta.put("status", "success");
                     jsonRespuesta.put("message", "Devolución procesada correctamente");

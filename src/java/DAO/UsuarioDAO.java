@@ -274,31 +274,46 @@ public class UsuarioDAO {
      * @param idUsuario Identificador del usuario.
      * @return Objeto Usuario mapeado, o null si no se encuentra.
      */
-    public Usuario obtenerUsuarioPorId(String idUsuario) {
-        // Consulta SQL para buscar usuario por clave primaria
+   public Usuario obtenerUsuarioPorId(String idUsuario) {
+        // Consulta SQL parametrizada para buscar los datos del usuario coincidente en la tabla 'usuario' de MySQL.
         String sql = "SELECT * FROM usuario WHERE id_usuario = ?";
-
+        // Bloque try-with-resources que administra automáticamente el ciclo de vida de la conexión física y el PreparedStatement.
         try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
-
+            // Asignar el parámetro idUsuario al primer marcador de posición (?) del PreparedStatement para mitigar Inyección SQL.
             ps.setString(1, idUsuario);
+            
+            // Ejecutar la consulta SQL SELECT y recuperar el conjunto de resultados ResultSet desde MySQL.
             try (ResultSet rs = ps.executeQuery()) {
+                // Evaluar si existe al menos una fila coincidente en el ResultSet.
                 if (rs.next()) {
+                    // Instanciar el objeto de tipo Modelo.Entidades.Usuario para el mapeo relacional.
                     Usuario usuario = new Usuario();
+                    
+                    // Asignar el valor del campo 'id_usuario' al objeto Java.
                     usuario.setIdUsuario(rs.getString("id_usuario"));
+                    // Asignar el valor de la clave foránea 'id_rol' para el control posterior de visibilidad en el Servlet.
                     usuario.setIdRol(rs.getString("id_rol"));
+                    // Asignar el nombre amigable de registro del usuario.
                     usuario.setName(rs.getString("name"));
+                    // Asignar la dirección de correo electrónico registrada.
                     usuario.setEmail(rs.getString("email"));
+                    // Asignar el teléfono de contacto del usuario.
                     usuario.setPhone(rs.getString("phone"));
+                    // Asignar el estado lógico ('Activo' / 'Inactivo') del usuario.
                     usuario.setEstado(rs.getString("status"));
+                    // Asignar la dirección física de domicilio.
                     usuario.setDireccion(rs.getString("direccion"));
+                    
+                    // Retornar el objeto de entidad completamente rellenado con datos del registro MySQL.
                     return usuario;
                 }
             }
         } catch (SQLException e) {
+            // Registrar errores en el flujo de consulta JDBC en la salida de error del sistema Tomcat.
             System.err.println("ERROR SQL AL OBTENER USUARIO POR ID: " + e.getMessage());
             e.printStackTrace();
         }
-
+        // Retornar null en caso de no encontrarse coincidencia de usuario o error técnico en la ejecución.
         return null;
     }
 

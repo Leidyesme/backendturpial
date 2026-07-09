@@ -202,47 +202,58 @@ public class HistorialDAO {
      * @return Lista de objetos Historial correspondientes.
      */
     public List<Historial> obtenerHistorialUsuario(String idUsuario) {
+        // Inicializar la lista dinámica ArrayList que almacenará los registros mapeados del historial de pedidos del usuario.
         List<Historial> lista = new ArrayList<>();
-        // Consulta SQL con LEFT JOIN para recuperar nombre de cliente e información de entrega
+        
+        // Consulta SQL parametrizada con LEFT JOIN para combinar datos del pedido con el nombre de usuario de la cabecera.
         String sql = "SELECT p.*, u.name AS user_name FROM pedido p "
                    + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario "
                    + "WHERE p.id_usuario = ? ORDER BY p.fecha_pedido DESC";
-
+        // Abrir la conexión y preparar la ejecución de la consulta. El uso de try-with-resources asegura el cierre de los streams JDBC.
         try (Connection con = Conexion.getConnection()) {
             try (PreparedStatement ps = con.prepareStatement(sql)) {
-                // Enlazar el parámetro idUsuario
+                // Vincular el idUsuario recibido por parámetros al primer marcador de posición (?) en la sentencia preparada.
                 ps.setString(1, idUsuario);
                 
+                // Ejecutar la consulta en base de datos y obtener el ResultSet con los registros devueltos.
                 try (ResultSet rs = ps.executeQuery()) {
-                    // Mapear cada registro del historial encontrado
+                    // Recorrer iterativamente cada registro devuelto por la base de datos.
                     while (rs.next()) {
+                        // Instanciar un objeto Historial por cada fila de la consulta.
                         Historial h = new Historial();
+                        // Mapear el ID único del pedido.
                         h.setIdPedido(rs.getString("id_pedido"));
+                        // Mapear el ID del usuario propietario del pedido.
                         h.setIdUsuario(rs.getString("id_usuario"));
+                        // Mapear la fecha del registro del pedido.
                         h.setFecha(rs.getString("fecha_pedido"));
+                        // Mapear el total financiero del pedido.
                         h.setTotal(rs.getDouble("total"));
+                        // Mapear el estado del pedido ('En preparación', 'Listo', 'En espera', 'Entregado').
                         h.setEstado(rs.getString("estado"));
+                        // Mapear el tipo de entrega seleccionado por el cliente.
                         h.setTipoEntrega(rs.getString("tipo_entrega"));
-
+                        // Recuperar el valor de la columna 'customer_name' (utilizado para pedidos de clientes no registrados).
                         String clientName = rs.getString("customer_name");
+                        // Lógica de respaldo: si está vacío o nulo, usar el nombre del usuario registrado obtenido del JOIN.
                         if (clientName == null || clientName.trim().isEmpty()) {
                             clientName = rs.getString("user_name");
                         }
+                        // Asignar el nombre del cliente final. Si ambos resultan nulos, usar un valor por defecto no destructivo.
                         h.setCustomerName(clientName != null ? clientName : "Cliente Anónimo");
-
-                        // Agregar el registro mapeado a la colección
+                        // Agregar el objeto de dominio completamente cargado al listado general de retorno.
                         lista.add(h);
                     }
                 }
             }
         } catch (SQLException e) {
+            // Escribir el log del error de SQL en consola para el diagnóstico y depuración de fallos de red o base de datos.
             System.err.println("ERROR SQL AL OBTENER HISTORIAL DE USUARIO: " + e.getMessage());
             e.printStackTrace();
         }
-        // Retornar lista
+        // Retornar el listado estructurado de pedidos al Servlet.
         return lista;
     }
-
     /**
      * Recupera el listado completo de todos los pedidos realizados en el sistema.
      * Método reservado para visualización administrativa (Administrador).
@@ -250,17 +261,21 @@ public class HistorialDAO {
      * @return Lista de objetos Historial correspondientes a todos los pedidos.
      */
     public List<Historial> obtenerTodosLosPedidos() {
+        // Inicializar el ArrayList que contendrá el historial global de pedidos del negocio.
         List<Historial> lista = new ArrayList<>();
-        // Consulta SQL con LEFT JOIN para recuperar nombre de cliente e información de entrega de todos los pedidos
+        
+        // Consulta SQL estructurada para obtener todos los registros de la tabla pedidos y cruzarlos con el nombre del usuario asignado.
         String sql = "SELECT p.*, u.name AS user_name FROM pedido p "
                    + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario "
                    + "ORDER BY p.fecha_pedido DESC";
-
+        // Abrir conexión JDBC de forma atómica y preparar el PreparedStatement.
         try (Connection con = Conexion.getConnection()) {
             try (PreparedStatement ps = con.prepareStatement(sql)) {
+                // Ejecutar la consulta SELECT global sin parámetros de filtro restrictivo.
                 try (ResultSet rs = ps.executeQuery()) {
-                    // Mapear cada registro encontrado
+                    // Recorrer el ResultSet de filas devueltas por MySQL.
                     while (rs.next()) {
+                        // Crear instancia para el mapeo de propiedades del pedido.
                         Historial h = new Historial();
                         h.setIdPedido(rs.getString("id_pedido"));
                         h.setIdUsuario(rs.getString("id_usuario"));
@@ -268,21 +283,74 @@ public class HistorialDAO {
                         h.setTotal(rs.getDouble("total"));
                         h.setEstado(rs.getString("estado"));
                         h.setTipoEntrega(rs.getString("tipo_entrega"));
-
+                        // Recuperar el valor de la columna 'customer_name' (nombre opcional del cliente).
                         String clientName = rs.getString("customer_name");
+                        // Validar si el nombre opcional es nulo para recurrir al nombre del usuario en el JOIN.
                         if (clientName == null || clientName.trim().isEmpty()) {
                             clientName = rs.getString("user_name");
                         }
+                        // Asignar el nombre amigable resultante o en su defecto "Cliente Anónimo".
                         h.setCustomerName(clientName != null ? clientName : "Cliente Anónimo");
-
+                        // Añadir a la lista de pedidos generales.
                         lista.add(h);
                     }
                 }
             }
         } catch (SQLException e) {
+            // Capturar y registrar la excepción SQL.
             System.err.println("ERROR SQL AL OBTENER HISTORIAL GENERAL: " + e.getMessage());
             e.printStackTrace();
         }
+        // Retornar la lista al componente del Servlet controlador.
         return lista;
+    }
+
+    /**
+     * Registra un evento en la tabla HistorialPedidos.
+     *
+     * @param idPedido Identificador del pedido.
+     * @param idUsuario Identificador del usuario que realiza la acción.
+     * @param estado Estado del movimiento ('Finalizado' o 'Cancelado').
+     * @param descripcion Descripción del evento.
+     * @return true si el registro fue exitoso, false en caso contrario.
+     */
+    public boolean registrarMovimientoHistorial(String idPedido, String idUsuario, String estado, String descripcion) {
+        String queryMaxId = "SELECT id_historialpedido FROM HistorialPedidos ORDER BY CAST(SUBSTRING(id_historialpedido, 5) AS UNSIGNED) DESC LIMIT 1";
+        String nextId = "HIS-001";
+
+        try (Connection con = Conexion.getConnection();
+             PreparedStatement psMax = con.prepareStatement(queryMaxId);
+             ResultSet rsMax = psMax.executeQuery()) {
+            if (rsMax.next()) {
+                String maxId = rsMax.getString("id_historialpedido");
+                if (maxId != null && maxId.startsWith("HIS-")) {
+                    try {
+                        int num = Integer.parseInt(maxId.substring(4));
+                        nextId = String.format("HIS-%03d", num + 1);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Error parseando ID de historial máximo: " + e.getMessage());
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error obteniendo el ID máximo de historial en HistorialDAO: " + e.getMessage());
+        }
+
+        String sql = "INSERT INTO HistorialPedidos (id_historialpedido, id_pedido, id_usuario, fecha_movimiento, estado, descripcion) VALUES (?, ?, ?, NOW(), ?, ?)";
+
+        try (Connection con = Conexion.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, nextId);
+            ps.setString(2, idPedido);
+            ps.setString(3, idUsuario);
+            ps.setString(4, estado);
+            ps.setString(5, descripcion);
+
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("ERROR SQL AL REGISTRAR EN HISTORIALPEDIDOS: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
     }
 }

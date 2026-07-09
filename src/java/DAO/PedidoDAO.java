@@ -236,9 +236,10 @@ public class PedidoDAO {
      *
      * @param idPedido Identificador del pedido.
      * @param nuevoEstado El nuevo estado (ej: 'Listo', 'En espera', 'Entregado').
+     * @param idUsuario Identificador del usuario que realiza la acción.
      * @return true si la actualización afectó al menos una fila, false de lo contrario.
      */
-    public boolean actualizarEstado(String idPedido, String nuevoEstado) {
+    public boolean actualizarEstado(String idPedido, String nuevoEstado, String idUsuario) {
         // Actualiza solo la columna 'estado' donde coincida el ID.
         String sql = "UPDATE pedido SET estado = ? WHERE id_pedido = ?";
         try (
@@ -247,8 +248,17 @@ public class PedidoDAO {
         ) {
             ps.setString(1, nuevoEstado);
             ps.setString(2, idPedido);
-            // Si la consulta afecta más de 0 filas, fue exitosa.
-            return ps.executeUpdate() > 0;
+            
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok && "Entregado".equalsIgnoreCase(nuevoEstado)) {
+                // Registrar en la tabla HistorialPedidos como 'Finalizado'
+                HistorialDAO historialDao = new HistorialDAO();
+                boolean histOk = historialDao.registrarMovimientoHistorial(idPedido, idUsuario, "Finalizado", "Pedido entregado correctamente");
+                if (!histOk) {
+                    System.err.println("[WARN - PedidoDAO] No se pudo registrar el movimiento en HistorialPedidos para " + idPedido);
+                }
+            }
+            return ok;
         } catch (SQLException e) {
             System.err.println("ERROR SQL AL ACTUALIZAR ESTADO DE PEDIDO: " + e.getMessage());
             e.printStackTrace();

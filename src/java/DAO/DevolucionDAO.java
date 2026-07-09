@@ -167,17 +167,61 @@ public class DevolucionDAO {
     }
     
     // MEtodo para que el administrador actualice el estado y la respuesta
-    public boolean procesarDevolucion(String idDevolucion, String estado, String respuesta) {
-    String sql = "UPDATE Devolucion SET estado_devolucion = ?, respuesta_admin = ? WHERE id_devolucion = ?";
-    try (Connection con = Conexion.getConnection();
-         PreparedStatement ps = con.prepareStatement(sql)) {
-        ps.setString(1, estado);
-        ps.setString(2, respuesta);
-        ps.setString(3, idDevolucion);
-        return ps.executeUpdate() > 0;
-    } catch (SQLException e) {
-        e.printStackTrace();
-        return false;
+    public boolean procesarDevolucion(String idDevolucion, String estado, String respuesta, String idUsuarioAdmin) {
+        String sqlUpdate = "UPDATE Devolucion SET estado_devolucion = ?, respuesta_admin = ? WHERE id_devolucion = ?";
+        String sqlGetPedido = "SELECT id_pedido FROM Devolucion WHERE id_devolucion = ?";
+        
+        try (Connection con = Conexion.getConnection()) {
+            con.setAutoCommit(false);
+            
+            try (PreparedStatement psUpdate = con.prepareStatement(sqlUpdate);
+                 PreparedStatement psGet = con.prepareStatement(sqlGetPedido)) {
+                
+                // 1. Obtener id_pedido
+                String idPedido = null;
+                psGet.setString(1, idDevolucion);
+                try (ResultSet rs = psGet.executeQuery()) {
+                    if (rs.next()) {
+                        idPedido = rs.getString("id_pedido");
+                    }
+                }
+                
+                if (idPedido == null) {
+                    con.rollback();
+                    return false;
+                }
+                
+                // 2. Actualizar estado de devolución
+                psUpdate.setString(1, estado);
+                psUpdate.setString(2, respuesta);
+                psUpdate.setString(3, idDevolucion);
+                
+                boolean ok = psUpdate.executeUpdate() > 0;
+                if (!ok) {
+                    con.rollback();
+                    return false;
+                }
+                
+                // 3. Si se aprueba la devolución, registrar en HistorialPedidos como 'Cancelado'
+                if ("Aprobada".equalsIgnoreCase(estado)) {
+                    HistorialDAO historialDao = new HistorialDAO();
+                    boolean histRegistrado = historialDao.registrarMovimientoHistorial(idPedido, idUsuarioAdmin, "Cancelado", "Devolución aprobada: " + respuesta);
+                    if (!histRegistrado) {
+                        System.err.println("Advertencia: No se pudo insertar en HistorialPedidos durante la aprobación de la devolución.");
+                    }
+                }
+                
+                con.commit();
+                return true;
+            } catch (SQLException e) {
+                con.rollback();
+                throw e;
+            } finally {
+                con.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
-}
 }
