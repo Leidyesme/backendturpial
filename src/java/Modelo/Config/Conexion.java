@@ -19,7 +19,7 @@ public class Conexion {
     private static final String USER = EnvConfig.get("DB_USER", "root");
     
     // Contraseña de la BD cargada dinámicamente; por defecto es la contraseña por defecto
-    private static final String PASSWORD = EnvConfig.get("DB_PASSWORD", "#Aprendiz2024");
+    private static final String PASSWORD = EnvConfig.get("DB_PASSWORD", "Sol2004.");
     
     // Nombre de la clase del Driver de MySQL para realizar el puente de conexión
     private static final String DRIVER = EnvConfig.get("DB_DRIVER", "com.mysql.cj.jdbc.Driver");

@@ -95,6 +95,8 @@ public class PedidoServlet extends HttpServlet {
                 jsonItem.put("estado", p.getEstado());
                 // Asignar la fecha del registro del pedido
                 jsonItem.put("fechaPedido", p.getFechaPedido() != null ? p.getFechaPedido() : "");
+                // Asignar el estado de pago del pedido ('Pagado' o 'Sin pagar')
+                jsonItem.put("estadoPago", p.getEstadoPago() != null ? p.getEstadoPago() : "Sin pagar");
 
                 // Agregar el objeto de pedido al arreglo
                 jsonArray.put(jsonItem);
@@ -223,46 +225,56 @@ public class PedidoServlet extends HttpServlet {
 
             JSONObject json = new JSONObject(body);
             String idPedido = json.getString("idPedido");
-            String nuevoEstado = json.getString("status");
+            String nuevoEstado = json.optString("status", null);
+            String nuevoEstadoPago = json.optString("estadoPago", json.optString("paymentStatus", null));
             String idUsuario = json.optString("idUsuario", null);
 
-            System.out.println("[INFO - PedidoServlet] doPut recibido: idPedido=" + idPedido + ", estado=" + nuevoEstado + ", idUsuario=" + idUsuario);
+            System.out.println("[INFO - PedidoServlet] doPut recibido: idPedido=" + idPedido + ", estado=" + nuevoEstado + ", estadoPago=" + nuevoEstadoPago);
 
-            // 1. Obtener la información completa del pedido desde la base de datos antes de proceder.
             JSONObject pedidoExistente = dao.obtenerPedidoConProductos(idPedido);
             if (pedidoExistente == null) {
-                // 2. Si el pedido no se encuentra registrado en el sistema, retornar una respuesta de error.
                 jsonRespuesta.put("status", "error");
                 jsonRespuesta.put("message", "El pedido no fue encontrado.");
                 response.getWriter().print(jsonRespuesta.toString());
                 return;
             }
 
-            // Fallback para idUsuario si es nulo o vacío
             if (idUsuario == null || idUsuario.trim().isEmpty() || idUsuario.equalsIgnoreCase("null")) {
                 idUsuario = pedidoExistente.optString("idUsuario", "USR-001");
             }
 
-            // 3. Extraer el estado actual del pedido guardado en la base de datos.
-            String estadoActual = pedidoExistente.getString("estado");
+            boolean cambioRealizado = false;
 
-            // 4. Validar si el pedido ya está en estado "Entregado", el cual es un estado final irreversible.
-            if ("Entregado".equalsIgnoreCase(estadoActual)) {
-                // 5. Bloquear cualquier intento de modificar un estado final e informar del error al cliente.
-                jsonRespuesta.put("status", "error");
-                jsonRespuesta.put("message", "No se puede cambiar el estado de un pedido que ya ha sido entregado.");
-                response.getWriter().print(jsonRespuesta.toString());
-                return;
+            if (nuevoEstadoPago != null && !nuevoEstadoPago.trim().isEmpty()) {
+                String estadoPagoExistente = pedidoExistente.optString("estadoPago", "Sin pagar");
+                if ("Pagado".equalsIgnoreCase(estadoPagoExistente) && "Sin pagar".equalsIgnoreCase(nuevoEstadoPago)) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "No se puede cambiar a 'Sin pagar' un pedido que ya ha sido pagado.");
+                    response.getWriter().print(jsonRespuesta.toString());
+                    return;
+                }
+                dao.actualizarEstadoPago(idPedido, nuevoEstadoPago);
+                cambioRealizado = true;
             }
 
-            // 6. Si el pedido no se encuentra en estado final, proceder con la actualización del estado.
-            boolean actualizado = dao.actualizarEstado(idPedido, nuevoEstado, idUsuario);
-            if (actualizado) {
+            if (nuevoEstado != null && !nuevoEstado.trim().isEmpty()) {
+                String estadoActual = pedidoExistente.getString("estado");
+                if ("Entregado".equalsIgnoreCase(estadoActual)) {
+                    jsonRespuesta.put("status", "error");
+                    jsonRespuesta.put("message", "No se puede cambiar el estado de un pedido que ya ha sido entregado.");
+                    response.getWriter().print(jsonRespuesta.toString());
+                    return;
+                }
+                dao.actualizarEstado(idPedido, nuevoEstado, idUsuario);
+                cambioRealizado = true;
+            }
+
+            if (cambioRealizado) {
                 jsonRespuesta.put("status", "success");
-                jsonRespuesta.put("message", "Estado del pedido actualizado exitosamente en MySQL");
+                jsonRespuesta.put("message", "Pedido actualizado exitosamente en MySQL");
             } else {
                 jsonRespuesta.put("status", "error");
-                jsonRespuesta.put("message", "No se pudo actualizar el estado del pedido en la base de datos");
+                jsonRespuesta.put("message", "No se enviaron campos válidos para actualizar");
             }
         } catch (Exception e) {
             e.printStackTrace();

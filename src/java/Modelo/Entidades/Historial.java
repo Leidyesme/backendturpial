@@ -108,4 +108,14 @@ public class Historial {
     public void setCustomerName(String customerName) {
         this.customerName = customerName;
     }
+
+    private String estadoPago = "Sin pagar";
+
+    public String getEstadoPago() {
+        return estadoPago;
+    }
+
+    public void setEstadoPago(String estadoPago) {
+        this.estadoPago = estadoPago;
+    }
 }

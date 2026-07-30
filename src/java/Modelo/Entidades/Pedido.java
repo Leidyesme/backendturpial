@@ -218,4 +218,14 @@ public class Pedido {
         this.fechaPedido =
                 fechaPedido;
     }
+
+    private String estadoPago = "Sin pagar";
+
+    public String getEstadoPago() {
+        return estadoPago;
+    }
+
+    public void setEstadoPago(String estadoPago) {
+        this.estadoPago = estadoPago;
+    }
 }

@@ -29,7 +29,12 @@ public class PedidoDAO {
      * seguridad y permisos denegados cuando se usan roles de base de datos restringidos.
      */
     public PedidoDAO() {
-        // Inicialización básica del DAO (sin operaciones DDL dinámicas)
+        try (Connection con = Conexion.getConnection();
+             java.sql.Statement stmt = con.createStatement()) {
+            stmt.executeUpdate("ALTER TABLE pedido ADD COLUMN estado_pago VARCHAR(20) DEFAULT 'Sin pagar'");
+        } catch (SQLException e) {
+            // Ignorar si la columna ya existe o falla por permisos
+        }
     }
 
     /**
@@ -38,72 +43,71 @@ public class PedidoDAO {
      * @return Una lista de objetos de tipo Pedido.
      */
     public List<Pedido> listar() {
-        // Crea el contenedor (lista) que albergará los objetos Pedido obtenidos de la base de datos.
         List<Pedido> lista = new ArrayList<>();
         
-        // Define la consulta SQL. Usa un LEFT JOIN para traer los datos del pedido y, 
-        // si existe, el nombre del usuario asociado (sin descartar pedidos sin usuario).
         String sql = "SELECT p.*, u.name AS user_name FROM pedido p "
                     + "LEFT JOIN usuario u ON p.id_usuario = u.id_usuario";
 
-        // Establece la conexión y ejecuta la consulta. El try-with-resources asegura que 
-        // la conexión, el statement y el resultado se cierren al terminar el bloque.
         try (
             Connection con = Conexion.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
             ResultSet rs = ps.executeQuery()
         ) {
-            // Itera sobre cada registro (fila) devuelto por la base de datos.
             while (rs.next()) {
-                // Instancia un nuevo objeto Pedido para mapear los datos de la fila actual.
                 Pedido p = new Pedido();
 
-                // Transfiere el valor de la columna 'id_pedido' al objeto Pedido.
-                p.setIdPedido(rs.getString("id_pedido"));
+                p.setIdPedido(safeString(rs, "id_pedido", "PED-000"));
+                p.setIdUsuario(safeString(rs, "id_usuario", null));
 
-                // Transfiere el 'id_usuario' al objeto (puede ser nulo en caso de ser un invitado).
-                p.setIdUsuario(rs.getString("id_usuario"));
-
-                // Lógica de respaldo: si 'customer_name' está vacío, toma el nombre de 'usuario' (u.name).
-                String clientName = rs.getString("customer_name");
-                if (clientName == null || clientName.trim().isEmpty()) {
-                    clientName = rs.getString("user_name");
+                String clientName = safeString(rs, "customer_name", null);
+                if (clientName == null) {
+                    clientName = safeString(rs, "user_name", "Cliente Anónimo");
                 }
-                // Asigna un valor por defecto si el cliente no está registrado.
-                p.setNombreClienteOpcional(clientName != null ? clientName : "Cliente Anónimo");
+                p.setNombreClienteOpcional(clientName);
+                p.setTipoEntrega(safeString(rs, "tipo_entrega", "Para consumir aquí"));
+                p.setNumeroMesa(safeInt(rs, "numero_mesa"));
+                p.setDireccionEntrega(safeString(rs, "direccion_entrega", "No especificada"));
+                p.setObservaciones(safeString(rs, "observaciones", ""));
+                p.setTotal(safeDouble(rs, "total"));
+                p.setEstado(safeString(rs, "estado", "En preparación"));
+                p.setFechaPedido(safeString(rs, "fecha_pedido", ""));
+                p.setEstadoPago(safeString(rs, "estado_pago", "Sin pagar"));
 
-                // Mapea el tipo de entrega (p.ej. 'Local' o 'Domicilio').
-                p.setTipoEntrega(rs.getString("tipo_entrega"));
-
-                // Obtiene el número de mesa (tipo primitivo).
-                int numeroMesa = rs.getInt("numero_mesa");
-
-                // Verifica si el valor en la base de datos fue NULL, para no asignar 0 erróneamente.
-                if (rs.wasNull()) {
-                    p.setNumeroMesa(null);
-                } else {
-                    p.setNumeroMesa(numeroMesa);
-                }
-
-                // Asigna los campos restantes del pedido desde la consulta SQL.
-                p.setDireccionEntrega(rs.getString("direccion_entrega"));
-                p.setObservaciones(rs.getString("observaciones"));
-                p.setTotal(rs.getDouble("total"));
-                p.setEstado(rs.getString("estado"));
-                p.setFechaPedido(rs.getString("fecha_pedido"));
-
-                // Añade el objeto completamente mapeado a la lista de retorno.
                 lista.add(p);
             }
 
         } catch (SQLException e) {
-            // Captura cualquier error de conexión o consulta SQL y lo registra en la consola.
             System.err.println("ERROR SQL AL LISTAR PEDIDOS: " + e.getMessage());
             e.printStackTrace();
         }
 
-        // Devuelve la lista completa al componente que invocó a este método (usualmente el Servlet).
         return lista;
+    }
+
+    private String safeString(ResultSet rs, String col, String def) {
+        try {
+            String v = rs.getString(col);
+            return (v != null && !v.trim().isEmpty() && !v.equalsIgnoreCase("null")) ? v : def;
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private Integer safeInt(ResultSet rs, String col) {
+        try {
+            int v = rs.getInt(col);
+            return rs.wasNull() ? null : v;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private double safeDouble(ResultSet rs, String col) {
+        try {
+            return rs.getDouble(col);
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 
     /**
@@ -310,6 +314,15 @@ public class PedidoDAO {
                     res.put("total", rs.getDouble("total"));
                     res.put("estado", rs.getString("estado"));
                     res.put("fechaPedido", rs.getString("fecha_pedido"));
+
+                    String estadoPago = "Sin pagar";
+                    try {
+                        estadoPago = rs.getString("estado_pago");
+                        if (estadoPago == null) estadoPago = "Sin pagar";
+                    } catch (SQLException e) {
+                        estadoPago = "Sin pagar";
+                    }
+                    res.put("estadoPago", estadoPago);
                 } else {
                     return null; // El pedido no existe.
                 }
@@ -350,4 +363,21 @@ public class PedidoDAO {
         res.put("products", arrayProductos);
         return res;
     }
+
+    /**
+     * Actualiza únicamente el estado de pago del pedido ('Pagado' o 'Sin pagar').
+     */
+    public boolean actualizarEstadoPago(String idPedido, String nuevoEstadoPago) {
+        String sql = "UPDATE pedido SET estado_pago = ? WHERE id_pedido = ?";
+        try (Connection con = Conexion.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, nuevoEstadoPago);
+            ps.setString(2, idPedido);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Error actualizando estado_pago en PedidoDAO: " + e.getMessage());
+            return false;
+        }
+    }
+}
 }

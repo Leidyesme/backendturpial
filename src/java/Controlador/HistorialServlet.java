@@ -91,10 +91,13 @@ public class HistorialServlet extends HttpServlet {
                 JSONObject jsonEntrada = new JSONObject(cuerpoPeticion);
                 
                 // Extraer atributos obligatorios para el registro
-                String idUsuario = jsonEntrada.getString("idUsuario");
-                double total = jsonEntrada.getDouble("total");
-                // Obtener el listado de productos del carrito
-                JSONArray productos = jsonEntrada.getJSONArray("products");
+                String idUsuario = jsonEntrada.optString("idUsuario", null);
+                double total = jsonEntrada.optDouble("total", 0.0);
+                // Obtener el listado de productos del carrito (soporta 'products' y 'productos')
+                JSONArray productos = jsonEntrada.optJSONArray("products");
+                if (productos == null || productos.isEmpty()) {
+                    productos = jsonEntrada.optJSONArray("productos");
+                }
 
                 // Extraer información de entrega adicional enviada por el cliente
                 String tipoEntrega = jsonEntrada.optString("tipoEntrega", "Para consumir aquí");
@@ -117,16 +120,16 @@ public class HistorialServlet extends HttpServlet {
                 pedido.setTotal(total);
                 pedido.setEstado("En preparación"); // Definir estado inicial estándar
 
-                // Guardar la información compuesta en base de datos mediante el DAO (con parámetros de entrega)
-                boolean registrado = historialDao.registrarPedido(pedido, productos, tipoEntrega, numeroMesa, direccion);
+                // Guardar la información compuesta en base de datos mediante el DAO (obteniendo diagnóstico detallado)
+                String errorRegistro = historialDao.registrarPedidoDetallado(pedido, productos, tipoEntrega, numeroMesa, direccion);
 
                 // Responder según el resultado de la transacción
-                if (registrado) {
+                if (errorRegistro == null) {
                     jsonRespuesta.put("status", "success");
                     jsonRespuesta.put("message", "Pedido registrado exitosamente en la base de datos.");
                 } else {
                     jsonRespuesta.put("status", "error");
-                    jsonRespuesta.put("message", "No se pudo registrar el pedido en la base de datos.");
+                    jsonRespuesta.put("message", errorRegistro);
                 }
             }
             // MÓDULO 2: LISTAR EL HISTORIAL DE PEDIDOS

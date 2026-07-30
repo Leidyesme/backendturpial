@@ -117,11 +117,23 @@ public class ProductoServlet extends HttpServlet {
             JSONObject jsonEntrada = new JSONObject(body);
             
             Producto p = new Producto();
-            p.setIdProducto(jsonEntrada.getString("idProducto"));
+            
+            String rawId = String.valueOf(jsonEntrada.get("idProducto"));
+            if (rawId.matches("\\d+")) {
+                rawId = "PROD-" + String.format("%03d", Integer.parseInt(rawId));
+            }
+            p.setIdProducto(rawId);
+
             p.setNombre(jsonEntrada.getString("name"));
             p.setPrecio(jsonEntrada.getDouble("price"));
             p.setStock(jsonEntrada.getInt("stock"));
-            p.setIdCategoria(jsonEntrada.getString("category"));
+
+            String rawCat = String.valueOf(jsonEntrada.get("category"));
+            if (rawCat.matches("\\d+")) {
+                rawCat = "CAT-" + String.format("%03d", Integer.parseInt(rawCat));
+            }
+            p.setIdCategoria(rawCat);
+
             p.setImagen(jsonEntrada.optString("image", ""));
 
             if (dao.actualizar(p)) {
