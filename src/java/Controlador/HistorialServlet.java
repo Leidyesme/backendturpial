@@ -193,6 +193,7 @@ public class HistorialServlet extends HttpServlet {
                     item.put("total", h.getTotal());
                     item.put("status", h.getEstado());
                     item.put("tipoEntrega", h.getTipoEntrega() != null ? h.getTipoEntrega() : "");
+                    item.put("estadoPago", h.getEstadoPago() != null ? h.getEstadoPago() : "Sin pagar");
                     item.put("customerName", h.getCustomerName() != null ? h.getCustomerName() : "Cliente Anónimo");
                     arrayPedidos.put(item);
                 }

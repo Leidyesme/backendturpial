@@ -13,7 +13,7 @@ import java.sql.SQLException;
 public class Conexion {
     
     // URL de la base de datos cargada dinámicamente; por defecto apunta a localhost
-    private static final String URL = EnvConfig.get("DB_URL", "jdbc:mysql://localhost:3306/turpial?serverTimezone=UTC&useSSL=false");
+    private static final String URL = EnvConfig.get("DB_URL", "jdbc:mysql://localhost:3306/turpial?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true");
     
     // Nombre del usuario de la BD cargado dinámicamente; por defecto es root
     private static final String USER = EnvConfig.get("DB_USER", "root");

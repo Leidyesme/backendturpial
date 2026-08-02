@@ -12,6 +12,15 @@ import java.util.List;
 
 public class ProductoDAO {
 
+    public ProductoDAO() {
+        try (Connection con = Conexion.getConnection();
+             java.sql.Statement stmt = con.createStatement()) {
+            stmt.executeUpdate("ALTER TABLE Producto MODIFY COLUMN imagen LONGTEXT");
+        } catch (Exception e) {
+            // Ignorar si no se requiere o ya está modificado
+        }
+    }
+
     public List<Producto> listar() {
 
         List<Producto> lista =

@@ -329,6 +329,7 @@ public class HistorialDAO {
                         h.setEstado(rs.getString("estado"));
                         // Mapear el tipo de entrega seleccionado por el cliente.
                         h.setTipoEntrega(rs.getString("tipo_entrega"));
+                        h.setEstadoPago(rs.getString("estado_pago") != null ? rs.getString("estado_pago") : "Sin pagar");
                         // Recuperar el valor de la columna 'customer_name' (utilizado para pedidos de clientes no registrados).
                         String clientName = rs.getString("customer_name");
                         // Lógica de respaldo: si está vacío o nulo, usar el nombre del usuario registrado obtenido del JOIN.
@@ -379,6 +380,7 @@ public class HistorialDAO {
                         h.setTotal(rs.getDouble("total"));
                         h.setEstado(rs.getString("estado"));
                         h.setTipoEntrega(rs.getString("tipo_entrega"));
+                        h.setEstadoPago(rs.getString("estado_pago") != null ? rs.getString("estado_pago") : "Sin pagar");
                         // Recuperar el valor de la columna 'customer_name' (nombre opcional del cliente).
                         String clientName = rs.getString("customer_name");
                         // Validar si el nombre opcional es nulo para recurrir al nombre del usuario en el JOIN.

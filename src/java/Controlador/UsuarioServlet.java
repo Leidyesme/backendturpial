@@ -138,6 +138,13 @@ public class UsuarioServlet extends HttpServlet {
 
                 // Comprobar si se encontró al usuario con las credenciales indicadas
                 if (usuario != null) {
+                    if ("Inactivo".equalsIgnoreCase(usuario.getEstado())) {
+                        jsonRespuesta.put("status", "error");
+                        jsonRespuesta.put("message", "Su cuenta se encuentra inactiva. Comuníquese con el administrador.");
+                        out.print(jsonRespuesta.toString());
+                        return;
+                    }
+
                     // Definir estado exitoso en la respuesta
                     jsonRespuesta.put("status", "success");
                     // Crear un sub-objeto JSON con los datos del usuario logueado
@@ -298,7 +305,11 @@ public class UsuarioServlet extends HttpServlet {
                     item.put("id", u.getIdUsuario());
                     item.put("name", u.getName());
                     item.put("email", u.getEmail());
-                    item.put("role", u.getIdRol()); // friendly name
+                    String nombreRol = "ROL-001".equals(u.getIdRol()) ? "Administrador" :
+                                       "ROL-002".equals(u.getIdRol()) ? "Empleado" :
+                                       "ROL-003".equals(u.getIdRol()) ? "Cliente" : u.getIdRol();
+                    item.put("role", nombreRol);
+                    item.put("idRol", u.getIdRol());
                     item.put("status", u.getEstado());
                     arrayEmpleados.put(item);
                 }
