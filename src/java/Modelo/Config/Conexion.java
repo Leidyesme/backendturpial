@@ -19,7 +19,7 @@ public class Conexion { // Qué hace: Declara la clase pública Conexion. | Para
     private static final String USER = EnvConfig.get("DB_USER", "root"); // Qué hace: Declara una constante privada estática que almacena el usuario de la base de datos. | Para qué sirve / Destino: Proporciona la credencial de autenticación inicial requerida para acceder al servidor MySQL.
     
     // Contraseña de la BD cargada dinámicamente; por defecto es la contraseña por defecto
-    private static final String PASSWORD = EnvConfig.get("DB_PASSWORD", "#Aprendiz2024"); // Qué hace: Declara una constante privada estática que almacena la contraseña de la base de datos. | Para qué sirve / Destino: Proporciona la credencial secreta de seguridad para validar el acceso al servidor MySQL.
+    private static final String PASSWORD = EnvConfig.get("DB_PASSWORD", "root"); // Qué hace: Declara una constante privada estática que almacena la contraseña de la base de datos. | Para qué sirve / Destino: Proporciona la credencial secreta de seguridad para validar el acceso al servidor MySQL.
     
     // Nombre de la clase del Driver de MySQL para realizar el puente de conexión
     private static final String DRIVER = EnvConfig.get("DB_DRIVER", "com.mysql.cj.jdbc.Driver"); // Qué hace: Declara una constante privada estática con la ruta del Driver JDBC de MySQL. | Para qué sirve / Destino: Define el conector técnico necesario para realizar el puente de comunicación con la base de datos relacional.
